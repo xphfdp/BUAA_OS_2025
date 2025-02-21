@@ -1,10 +1,10 @@
 #include <blib.h>
 
 size_t strlen(const char *s) {
-    panic("please implement");
+   // panic("please implement");
     size_t result = 0;
-    while(s[result] != '\0') {
-	    result++;
+    for(result=0;str[result]!='\0';result++) {
+
     }
     return result;
 }
@@ -48,7 +48,7 @@ int strncmp(const char *s1, const char *s2, size_t n) {
 }
 
 char *strcat(char *dst, const char *src) {
-    panic("please implement");
+    // panic("please implement");
     int i=0,j=0;
     for(i=0;dst[i]!='\0';i++) {
 
@@ -62,7 +62,7 @@ char *strcat(char *dst, const char *src) {
 }
 
 char *strncat(char *dst, const char *src, size_t n){
-    panic("please implement");
+    // panic("please implement");
     int src_len = 0;
     for(src_len=0;src[src_len]!='\0';src_len++) {
 
@@ -104,7 +104,7 @@ char *strchr(const char *str, int character){
 }
 
 char* strsep(char** stringp, const char* delim){
-    panic("please implement");
+    // panic("please implement");
     char *start = *stringp;
     char *end;
 

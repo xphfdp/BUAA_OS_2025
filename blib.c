@@ -72,7 +72,7 @@ char *strncat(char *dst, const char *src, size_t n){
         for(i=0;dst[i]!='\0';i++) {
 
         }
-        for(j=0;j <= n;j++) {
+        for(j=0;j < n;j++) {
             dst[i] = src[j];
             i++;
         }

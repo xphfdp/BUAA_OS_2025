@@ -2,6 +2,11 @@
 
 size_t strlen(const char *s) {
     panic("please implement");
+    size_t result = 0;
+    while(s[result] != '\0') {
+	    result++;
+    }
+    return result;
 }
 
 char *strcpy(char *dst, const char *src) {
@@ -44,10 +49,47 @@ int strncmp(const char *s1, const char *s2, size_t n) {
 
 char *strcat(char *dst, const char *src) {
     panic("please implement");
+    int i=0,j=0;
+    for(i=0;dst[i]!='\0';i++) {
+
+    }
+    for(j=0;src[j]!='\0';j++) {
+        dst[i] = src[j];
+        i++;
+    }
+    dst[i] = '\0';
+    return dst;
 }
 
 char *strncat(char *dst, const char *src, size_t n){
     panic("please implement");
+    int src_len = 0;
+    for(src_len=0;src[src_len]!='\0';src_len++) {
+
+    }
+    if(n < src_len) {
+        int i=0,j=0;
+        for(i=0;dst[i]!='\0';i++) {
+
+        }
+        for(j=0;j <= n;j++) {
+            dst[i] = src[j];
+            i++;
+        }
+        dst[i] = '\0';
+        return dst;
+    } else {
+        int i=0,j=0;
+        for(i=0;dst[i]!='\0';i++) {
+
+        }
+        for(j=0;src[j]!='\0';j++) {
+            dst[i] = src[j];
+            i++;
+        }
+        dst[i] = '\0';
+        return dst;
+    }
 }
 
 char *strchr(const char *str, int character){
@@ -63,6 +105,23 @@ char *strchr(const char *str, int character){
 
 char* strsep(char** stringp, const char* delim){
     panic("please implement");
+    char *start = *stringp;
+    char *end;
+
+    if (start == NULL) {
+        return NULL;
+    }
+
+    end = start + strcspn(start, delim);
+
+    if (*end == '\0') {
+        *stringp = NULL;
+    } else {
+        *end = '\0';
+        *stringp = end + 1;
+    }
+
+    return start;
 }
 
 

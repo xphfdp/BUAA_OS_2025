@@ -3,7 +3,7 @@
 size_t strlen(const char *s) {
    // panic("please implement");
     size_t result = 0;
-    for(result=0;str[result]!='\0';result++) {
+    for(result=0;s[result]!='\0';result++) {
 
     }
     return result;
@@ -105,23 +105,26 @@ char *strchr(const char *str, int character){
 
 char* strsep(char** stringp, const char* delim){
     // panic("please implement");
-    char *start = *stringp;
-    char *end;
-
-    if (start == NULL) {
-        return NULL;
+    char *s;
+    const char *spanp;
+    int c, sc;
+    char *tok;
+    if ((s = *stringp)== NULL)
+        return (NULL);
+    for (tok = s;;) {
+        c = *s++;
+        spanp = delim;
+        do {
+            if ((sc =*spanp++) == c) {
+                if (c == 0)
+                    s = NULL;
+                else
+                    s[-1] = 0;
+                *stringp = s;
+                return (tok);
+            }
+        } while (sc != 0);
     }
-
-    end = start + strcspn(start, delim);
-
-    if (*end == '\0') {
-        *stringp = NULL;
-    } else {
-        *end = '\0';
-        *stringp = end + 1;
-    }
-
-    return start;
 }
 
 

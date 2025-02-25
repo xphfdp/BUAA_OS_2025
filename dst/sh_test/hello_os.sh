@@ -1,8 +1,4 @@
 #!/bin/bash
-touch AAA
-touch BBB
-sed -n '8p' AAA >> BBB
-sed -n '32p' AAA >> BBB
-sed -n '128p' AAA >> BBB
-sed -n '512p' AAA >> BBB
-sed -n '1024p' AAA >> BBB
+
+touch $2
+sed -n '8p;32p;128p;512p;1024p' $1 > $2

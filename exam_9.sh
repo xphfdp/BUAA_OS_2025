@@ -16,7 +16,7 @@ then
 	done
 else
 	i=0
-	for((i=c;i<=d;i++)); do
+	for((i=c;i<d;i++)); do
 		sed -n "${i}p" stderr.txt
 	done
 fi

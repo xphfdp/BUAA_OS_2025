@@ -7,5 +7,5 @@ i=0
 for((i=1;i<=10;i++)); do
 	sed -i '1i\#include"include/libsy.sh"' code/code${i}.sy
 	sed -i 's/getInt/getint/g' code/code${i}.sy
-	cp code/${i}.sy codeSet/code${i}.c
+	cp code/code${i}.sy codeSet/code${i}.c
 done

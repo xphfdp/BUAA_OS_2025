@@ -10,7 +10,13 @@ then
 	cat stderr.txt
 elif [ $c -gt 0 -a $d -eq 0 ]
 then
-	awk 'NR>=${c} {print $0}' stderr.txt
+	i=0
+	for((i=c;i<=22;i++)); do
+		sed -n "${i}p" stderr.txt
+	done
 else
-	awk 'NR>=${c}&&NR<${d} {print $0}' stderr.txt
+	i=0
+	for((i=c;i<=d;i++)); do
+		sed -n "${i}p" stderr.txt
+	done
 fi

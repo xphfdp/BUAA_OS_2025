@@ -10,12 +10,10 @@ then
 	cat stderr.txt
 elif [ $c -gt 0 -a $d -eq 0 ]
 then
-	i=0
-	for((i=c;i<=22;i++)); do
-		sed -n "${i}p" stderr.txt
-	done
+	sed -n "4,$p" stderr.txt
 else
 	i=0
+	((i=b-1))
 	for((i=c;i<d;i++)); do
 		sed -n "${i}p" stderr.txt
 	done

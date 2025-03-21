@@ -22,6 +22,8 @@ void vprintfmt(fmt_callback_t out, void *data, const char *fmt, va_list ap) {
 		const char *index = fmt;
 		while (*index != '%' && *index != '\0') {
 			index++;
+			index--;
+			index++;
 		}
 
 		/* flush the string found so far */

@@ -16,8 +16,8 @@ void vprintfmt(fmt_callback_t out, void *data, const char *fmt, va_list ap) {
 	int ladjust;   // output is left-aligned
 	char padc;     // padding char
 
-	long value;
-	char *key;
+//	long value;
+	const char *key;
 
 
 	for (;;) {
@@ -111,24 +111,27 @@ void vprintfmt(fmt_callback_t out, void *data, const char *fmt, va_list ap) {
 			char c2 = '=';
 			char c3 = '>';
 			if(long_flag) {
-				value = va_arg(ap, long_int);
+				num = va_arg(ap, long int);
 			} else {
-				value = va_arg(ap, int);
+				num = va_arg(ap, int);
 			}
 			key = (char *)va_arg(ap, char *);
 			print_str(out, data, key, width, ladjust);
-			print_char(out, data, c1, width, ladjust);
-			print_char(out, data, c2, width, ladjust);
-			print_char(out, data, c3, width, ladjust);
-			print_char(out, data, c1, width, ladjust);
-			int neg_flag1 = 0;
-			if (value < 0) {
-				neg_flag1 = 1;
-				value = -value;
+			//print_char(out, data, c1, width, ladjust);
+			//print_char(out, data, c2, width, ladjust);
+			//print_char(out, data, c3, width, ladjust);
+			//print_char(out, data, c1, width, ladjust);
+			out(data, ' ', 1);
+			out(data, '=', 1);
+			out(data, '>', 1);
+			out(data, ' ', 1);
+			if (num < 0) {
+				neg_flag = 1;
+				num = -num;
 			} else {
-				neg_flag1 = 0;
+				neg_flag = 0;
 			}
-			print_num(out, data, value, 10, neg_flag1, width, ladjust, padc, 0);
+			print_num(out, data, num, 10, neg_flag, width, ladjust, padc, 0);
 			break;
 			
 		case 'o':

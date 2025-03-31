@@ -11,8 +11,8 @@
 #define PDMAP (4 * 1024 * 1024) // bytes mapped by a page directory entry
 #define PGSHIFT 12
 #define PDSHIFT 22 // log2(PDMAP)
-#define PDX(va) ((((u_long)(va)) >> PDSHIFT) & 0x03FF)
-#define PTX(va) ((((u_long)(va)) >> PGSHIFT) & 0x03FF)
+#define PDX(va) ((((u_long)(va)) >> PDSHIFT) & 0x03FF) // get Page Directory
+#define PTX(va) ((((u_long)(va)) >> PGSHIFT) & 0x03FF) // get Page Table
 #define PTE_ADDR(pte) (((u_long)(pte)) & ~0xFFF)
 #define PTE_FLAGS(pte) (((u_long)(pte)) & 0xFFF)
 

@@ -139,6 +139,8 @@ void page_init(void) {
  */
 
  // 分配空闲物理页面
+ // 从page_free_list中抽取第一个空闲页控制块，
+ // 将该页控制块对应的物理内存作为分配的内存，并将该内存初始化为0
 int page_alloc(struct Page **new) {
 	/* Step 1: Get a page from free memory. If fails, return the error code.*/
 	struct Page *pp;
@@ -166,6 +168,7 @@ int page_alloc(struct Page **new) {
  * Pre-Condition:
  *   'pp->pp_ref' is '0'.
  */
+// 释放引用次数为0的页（空闲页），将其重新插入到page_free_list的头部
 void page_free(struct Page *pp) {
 	assert(pp->pp_ref == 0);
 	/* Just insert it into 'page_free_list'. */
@@ -206,7 +209,7 @@ static int pgdir_walk(Pde *pgdir, u_long va, int create, Pte **ppte) {
 	 *   * Otherwise, assign NULL to '*ppte' and return 0.
 	 */
 	/* Exercise 2.6: Your code here. (2/3) */
-	if (!(*pgdir_entryp & PTE_V)) {
+	if (!(*pgdir_entryp & PTE_V)) { // 判断当前页目录项是否有效
 		if (create) {
 			if (page_alloc(&pp) != 0) {
 				return -E_NO_MEM;
@@ -323,6 +326,8 @@ void page_decref(struct Page *pp) {
 /* Lab 2 Key Code "page_remove" */
 // Overview:
 //   Unmap the physical page at virtual address 'va'.
+/*删除一级页表基地址pgdir对应的两级页表结构中虚拟地址va对物理地址的映射。如果存在这样的映射，那么对应
+物理页面的引用次数会减少一次。*/
 void page_remove(Pde *pgdir, u_int asid, u_long va) {
 	Pte *pte;
 

@@ -32,7 +32,7 @@ struct Page {
 // 		u_short pp_ref;
 // 	};
 
-extern struct Page *pages;
+extern struct Page *pages; // 页数组，管理所有的页控制块
 extern struct Page_list page_free_list; // 称为空闲链表，储存空闲的物理页
 
 // 通过指针减法获取对应的页控制块是第几个页

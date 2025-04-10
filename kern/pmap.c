@@ -193,6 +193,7 @@ void page_free(struct Page *pp) {
  *   We use a two-level pointer to store page table entry and return a state code to indicate
  *   whether this function succeeds or not.
  */
+// 给定一个虚拟地址，在给定的页目录中查找这个虚拟地址对应的物理地址
 // 给定一个虚拟地址，在给定的页目录中查找这个虚拟地址对应的（二级）页表项，将其地址写入*ppte。
 static int pgdir_walk(Pde *pgdir, u_long va, int create, Pte **ppte) {
 	Pde *pgdir_entryp; // 页目录页表项地址
@@ -241,6 +242,7 @@ static int pgdir_walk(Pde *pgdir, u_long va, int create, Pte **ppte) {
  *   If there is already a page mapped at `va`, call page_remove() to release this mapping.
  *   The `pp_ref` should be incremented if the insertion succeeds.
  */
+// 将一级页表基地址pgdir中虚拟地址va所在虚拟页面指向页控制块pp对应的物理页面，并将页表项权限为设置为perm。
 // 将一级页表基地址pgdir对应的两级页表结构中虚拟地址va映射到页控制块pp对应的物理页面，并将页表项权限为设置为perm。
 int page_insert(Pde *pgdir, u_int asid, struct Page *pp, u_long va, u_int perm) {
 	Pte *pte;
@@ -283,6 +285,7 @@ int page_insert(Pde *pgdir, u_int asid, struct Page *pp, u_long va, u_int perm) 
   Post-Condition:
     Return a pointer to corresponding Page, and store it's page table entry to *ppte.
     If `va` doesn't mapped to any Page, return NULL.*/
+// 返回虚拟地址va映射物理页的页控制块Page，并将ppte指向的空间设为二级页表项地址
 // 查找虚拟地址对应的页控制块及页表项
 // 返回一级页表基地址pgdir对应的两级页表结构中虚拟地址va映射的物理页面的页控制块，
 // 同时将ppte指向的空间设为对应的二级页表项地址。
@@ -326,6 +329,7 @@ void page_decref(struct Page *pp) {
 /* Lab 2 Key Code "page_remove" */
 // Overview:
 //   Unmap the physical page at virtual address 'va'.
+// 删除虚拟地址va在指定程序中所对应的物理页面映射
 /*删除一级页表基地址pgdir对应的两级页表结构中虚拟地址va对物理地址的映射。如果存在这样的映射，那么对应
 物理页面的引用次数会减少一次。*/
 void page_remove(Pde *pgdir, u_int asid, u_long va) {

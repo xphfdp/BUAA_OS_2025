@@ -8,9 +8,9 @@
 #define NASID 256
 #define PAGE_SIZE 4096 // 一页的字节数
 #define PTMAP PAGE_SIZE
-#define PDMAP (4 * 1024 * 1024) // bytes mapped by a page directory entry
-#define PGSHIFT 12
-#define PDSHIFT 22 // log2(PDMAP)
+#define PDMAP (4 * 1024 * 1024) // bytes mapped by a page directory entry，定义了一个一级页表页能管理的字节数
+#define PGSHIFT 12 // 移动获得二级页号
+#define PDSHIFT 22 // log2(PDMAP)，移动获得一级页号
 #define PDX(va) ((((u_long)(va)) >> PDSHIFT) & 0x03FF) // 获取虚拟地址31-22位，表示一级页表（页目录）的偏移量
 #define PTX(va) ((((u_long)(va)) >> PGSHIFT) & 0x03FF) // 获取虚拟地址21-12位，表示二级页表（页表）的偏移量
 #define PTE_ADDR(pte) (((u_long)(pte)) & ~0xFFF) // 获取页目录项对应的二级页表的基地址（物理地址）

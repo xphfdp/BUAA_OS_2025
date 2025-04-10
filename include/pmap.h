@@ -90,6 +90,7 @@ void page_remove(Pde *pgdir, u_int asid, u_long va);
 
 extern struct Page *pages;
 
+u_int page_conditional_remove(Pde *pgdir, u_int asid, u_int perm_mask, u_long begin_va, u_long end_va);
 void physical_memory_manage_check(void);
 void page_check(void);
 

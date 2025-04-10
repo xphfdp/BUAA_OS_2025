@@ -351,6 +351,26 @@ void page_remove(Pde *pgdir, u_int asid, u_long va) {
 }
 /* End of Key Code "page_remove" */
 
+u_int page_conditional_remove(Pde *pgdir, u_int asid, u_int perm_mask, u_long begin_va, u_long end_va) {
+	u_int count = 0;
+	u_int va;
+	Pte *pte;
+	struct Page *pp;
+	for (va = begin_va;va<end_va;va+=PAGE_SIZE) {
+		if (page_lookup(pgdir, va, &pte) != NULL) {
+			pp = pa2page(*pte);
+			u_int mask = PTE_FLAGS(pte);
+			if (perm_mask & mask) {
+				page_decref(pp);
+				*pte = 0;
+				tlb_invalidate(asid, va);
+				count++;
+			}
+		}
+	}	
+	return count;
+}
+
 // u_int page_filter(Pde *pgdir, u_int va_lower_limit, u_int va_upper_limit, u_int num) {
 // 	u_int count = 0;
 // 	u_int i;

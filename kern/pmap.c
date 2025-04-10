@@ -367,6 +367,30 @@ void page_remove(Pde *pgdir, u_int asid, u_long va) {
 // 	return count;
 // }
 
+// u_int page_filter(Pde *pgdir, u_int va_lower_limit, u_int va_upper_limit, u_int num)
+// {
+// 	u_int cnt=0;
+// 	for(u_long i=0;i<1024;i++)
+// 	{
+// 		Pde* pde=pgdir+i;
+// 		if(*pde)
+// 		{
+// 			for(u_long j=0;j<1024;j++)
+// 			{
+// 				Pte* pte;
+// 				u_long va=(i<<22)|(j<<12);
+// 				pgdir_walk(pgdir, va, 0, &pte);
+// 				if((pte!=NULL&&(*pte&PTE_V))&&va>=va_lower_limit&&va<va_upper_limit)
+// 				{
+// 					if(pa2page(*pte)->pp_ref>=num)
+// 						cnt++;
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return cnt;
+// }
+
 void physical_memory_manage_check(void) {
 	struct Page *pp, *pp0, *pp1, *pp2;
 	struct Page_list fl;

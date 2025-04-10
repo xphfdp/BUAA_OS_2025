@@ -17,7 +17,7 @@ typedef unsigned long u_long;
 	})
 
 /* Rounding; only works for n = power of two */
-#define ROUND(a, n) (((((u_long)(a)) + (n)-1)) & ~((n)-1))
-#define ROUNDDOWN(a, n) (((u_long)(a)) & ~((n)-1))
+#define ROUND(a, n) (((((u_long)(a)) + (n)-1)) & ~((n)-1)) // 将a按n向上对齐，n为2的非负数次幂
+#define ROUNDDOWN(a, n) (((u_long)(a)) & ~((n)-1)) // 将a按n向下对齐，n为2的非负数次幂
 
 #endif /* !_INC_TYPES_H_ */

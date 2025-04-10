@@ -12,7 +12,7 @@ u_long npage;	       /* Amount of memory(in pages) */
 Pde *cur_pgdir;
 
 struct Page *pages;
-static u_long freemem;
+static u_long freemem; // 表示可用内存的首地址，即小于freemem对应物理地址的物理内存都已经被分配了
 
 struct Page_list page_free_list; /* Free list of physical pages */
 
@@ -20,6 +20,7 @@ struct Page_list page_free_list; /* Free list of physical pages */
  *   Use '_memsize' from bootloader to initialize 'memsize' and
  *   calculate the corresponding 'npage' value.
  */
+// 探测可用的物理内存，根据物理内存计算分页数
 void mips_detect_memory(u_int _memsize) {
 	/* Step 1: Initialize memsize. */
 	memsize = _memsize;
@@ -43,7 +44,7 @@ void *alloc(u_int n, u_int align, int clear) {
 	/* 分配n字节的空间并返回初始的虚拟地址，同时将地址按align字节对齐（保证align可以整除初始虚拟地址），
 	 * 若clear为真，则将对应内存空间的值清零，否则不清零*/
 	extern char end[]; // defined in kernel.lds, equals to 0x80400000
-	u_long alloced_mem;
+	u_long alloced_mem; // 已分配的物理内存空间的首地址
 
 	/* Initialize `freemem` if this is the first time. The first virtual address that the
 	 * linker did *not* assign to any kernel code or global variables. */
@@ -77,6 +78,8 @@ void *alloc(u_int n, u_int align, int clear) {
     Set up two-level page table.
    Hint:
     You can get more details about `UPAGES` and `UENVS` in include/mmu.h. */
+// 申请一部分空间作为页控制块，大小为npage个Page结构体的字节数，以页的大小对齐
+// 同时将申请的空间中的内容初始化为0
 void mips_vm_init() {
 	/* Allocate proper size of physical memory for global array `pages`,
 	 * for physical memory management. Then, map virtual address `UPAGES` to
@@ -93,6 +96,8 @@ void mips_vm_init() {
  *
  * Hint: Use 'LIST_INSERT_HEAD' to insert free pages to 'page_free_list'.
  */
+// 对mips_vm_init()创建的pages数组进行初始化
+// 已经使用的物理页面引用次数标记为1，其余标记为0
 void page_init(void) {
 	/* Step 1: Initialize page_free_list. */
 	/* Hint: Use macro `LIST_INIT` defined in include/queue.h. */
@@ -132,6 +137,8 @@ void page_init(void) {
  *
  * Hint: Use LIST_FIRST and LIST_REMOVE defined in include/queue.h.
  */
+
+ // 分配空闲物理页面
 int page_alloc(struct Page **new) {
 	/* Step 1: Get a page from free memory. If fails, return the error code.*/
 	struct Page *pp;
@@ -146,6 +153,7 @@ int page_alloc(struct Page **new) {
 	/* Step 2: Initialize this page with zero.
 	 * Hint: use `memset`. */
 	/* Exercise 2.4: Your code here. (2/2) */
+	// 将申请的物理页内容初始化为0
 	memset((void *)page2kva(pp), 0, PAGE_SIZE);
 
 	*new = pp;
@@ -182,13 +190,14 @@ void page_free(struct Page *pp) {
  *   We use a two-level pointer to store page table entry and return a state code to indicate
  *   whether this function succeeds or not.
  */
+// 给定一个虚拟地址，在给定的页目录中查找这个虚拟地址对应的（二级）页表项，将其地址写入*ppte。
 static int pgdir_walk(Pde *pgdir, u_long va, int create, Pte **ppte) {
-	Pde *pgdir_entryp;
-	struct Page *pp;
+	Pde *pgdir_entryp; // 页目录页表项地址
+	struct Page *pp; // 页控制块
 
 	/* Step 1: Get the corresponding page directory entry. */
 	/* Exercise 2.6: Your code here. (1/3) */
-	pgdir_entryp = pgdir + PDX(va);
+	pgdir_entryp = pgdir + PDX(va); // 页目录基地址 + 页目录偏移量 = 页目录页表项地址
 
 	/* Step 2: If the corresponding page table is not existent (valid) then:
 	 *   * If parameter `create` is set, create one. Set the permission bits 'PTE_C_CACHEABLE |
@@ -203,7 +212,7 @@ static int pgdir_walk(Pde *pgdir, u_long va, int create, Pte **ppte) {
 				return -E_NO_MEM;
 			}
 			pp->pp_ref++;
-			*pgdir_entryp = page2pa(pp) | PTE_C_CACHEABLE | PTE_V;
+			*pgdir_entryp = page2pa(pp) | PTE_C_CACHEABLE | PTE_V; // 设置虚拟地址对应页目录项的内容
 		} else {
 			*ppte = NULL;
 			return 0;
@@ -229,6 +238,7 @@ static int pgdir_walk(Pde *pgdir, u_long va, int create, Pte **ppte) {
  *   If there is already a page mapped at `va`, call page_remove() to release this mapping.
  *   The `pp_ref` should be incremented if the insertion succeeds.
  */
+// 将一级页表基地址pgdir对应的两级页表结构中虚拟地址va映射到页控制块pp对应的物理页面，并将页表项权限为设置为perm。
 int page_insert(Pde *pgdir, u_int asid, struct Page *pp, u_long va, u_int perm) {
 	Pte *pte;
 
@@ -270,6 +280,9 @@ int page_insert(Pde *pgdir, u_int asid, struct Page *pp, u_long va, u_int perm) 
   Post-Condition:
     Return a pointer to corresponding Page, and store it's page table entry to *ppte.
     If `va` doesn't mapped to any Page, return NULL.*/
+// 查找虚拟地址对应的页控制块及页表项
+// 返回一级页表基地址pgdir对应的两级页表结构中虚拟地址va映射的物理页面的页控制块，
+// 同时将ppte指向的空间设为对应的二级页表项地址。
 struct Page *page_lookup(Pde *pgdir, u_long va, Pte **ppte) {
 	struct Page *pp;
 	Pte *pte;
@@ -297,6 +310,7 @@ struct Page *page_lookup(Pde *pgdir, u_long va, Pte **ppte) {
  *   Decrease the 'pp_ref' value of Page 'pp'.
  *   When there's no references (mapped virtual address) to this page, release it.
  */
+// 减少页控制块pp的引用次数pp_ref，如果减少之后pp_ref为0，则释放该页，重新插入page_free_list
 void page_decref(struct Page *pp) {
 	assert(pp->pp_ref > 0);
 

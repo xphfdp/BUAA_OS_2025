@@ -6,19 +6,19 @@
  */
 
 #define NASID 256
-#define PAGE_SIZE 4096
+#define PAGE_SIZE 4096 // 一页的字节数
 #define PTMAP PAGE_SIZE
 #define PDMAP (4 * 1024 * 1024) // bytes mapped by a page directory entry
 #define PGSHIFT 12
 #define PDSHIFT 22 // log2(PDMAP)
-#define PDX(va) ((((u_long)(va)) >> PDSHIFT) & 0x03FF) // get Page Directory
-#define PTX(va) ((((u_long)(va)) >> PGSHIFT) & 0x03FF) // get Page Table
-#define PTE_ADDR(pte) (((u_long)(pte)) & ~0xFFF)
+#define PDX(va) ((((u_long)(va)) >> PDSHIFT) & 0x03FF) // 获取虚拟地址31-22位，表示一级页表（页目录）的偏移量
+#define PTX(va) ((((u_long)(va)) >> PGSHIFT) & 0x03FF) // 获取虚拟地址21-12位，表示二级页表（页表）的偏移量
+#define PTE_ADDR(pte) (((u_long)(pte)) & ~0xFFF) // 获取页目录项对应的二级页表的基地址（物理地址）
 #define PTE_FLAGS(pte) (((u_long)(pte)) & 0xFFF)
 
 // Page number field of an address
-#define PPN(pa) (((u_long)(pa)) >> PGSHIFT)
-#define VPN(va) (((u_long)(va)) >> PGSHIFT)
+#define PPN(pa) (((u_long)(pa)) >> PGSHIFT) // 获取物理地址pa所对应的物理页号
+#define VPN(va) (((u_long)(va)) >> PGSHIFT) // 获取虚拟地址va所对应的虚拟页号
 
 // Page Table/Directory Entry flags
 
@@ -49,14 +49,14 @@
 #define PTE_G (0x0001 << PTE_HARDFLAG_SHIFT)
 
 // Valid bit. If 0 any address matching this entry will cause a tlb miss exception (TLBL/TLBS).
-#define PTE_V (0x0002 << PTE_HARDFLAG_SHIFT)
+#define PTE_V (0x0002 << PTE_HARDFLAG_SHIFT) // 页表项中的有效位，为1则表示该页表项有效
 
 // Dirty bit, but really a write-enable bit. 1 to allow writes, 0 and any store using this
 // translation will cause a tlb mod exception (TLB Mod).
-#define PTE_D (0x0004 << PTE_HARDFLAG_SHIFT)
+#define PTE_D (0x0004 << PTE_HARDFLAG_SHIFT) // 页表项中的脏位（实际上是可写位），为1则该页表项可写
 
 // Cache Coherency Attributes bit.
-#define PTE_C_CACHEABLE (0x0018 << PTE_HARDFLAG_SHIFT)
+#define PTE_C_CACHEABLE (0x0018 << PTE_HARDFLAG_SHIFT) // 页表项中的可缓存位，为1则可缓存
 #define PTE_C_UNCACHEABLE (0x0010 << PTE_HARDFLAG_SHIFT)
 
 // Copy On Write. Reserved for software, used by fork.
@@ -146,11 +146,12 @@
 #include <string.h>
 #include <types.h>
 
-extern u_long npage;
+extern u_long npage; // 表示总页数
 
-typedef u_long Pde;
-typedef u_long Pte;
+typedef u_long Pde; // 表示一级页表项类型
+typedef u_long Pte; // 表示二级页表项类型
 
+// 获取kseg0中的虚拟地址kva所对应的物理地址，ULIM是kseg0的基地址
 #define PADDR(kva)                                                                                 \
 	({                                                                                         \
 		u_long _a = (u_long)(kva);                                                         \
@@ -159,7 +160,7 @@ typedef u_long Pte;
 		_a - ULIM;                                                                         \
 	})
 
-// translates from physical address to kernel virtual address
+// 获取物理地址pa所对应的位于kesg0中的虚拟地址
 #define KADDR(pa)                                                                                  \
 	({                                                                                         \
 		u_long _ppn = PPN(pa);                                                             \
@@ -183,6 +184,6 @@ typedef u_long Pte;
 	})
 
 extern void tlb_out(u_int entryhi);
-void tlb_invalidate(u_int asid, u_long va);
+void tlb_invalidate(u_int asid, u_long va); //
 #endif //!__ASSEMBLER__
 #endif // !_MMU_H_

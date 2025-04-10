@@ -7,7 +7,8 @@ LEAF(tlb_out)
 	nop
 	/* Step 1: Use 'tlbp' to probe TLB entry */
 	/* Exercise 2.8: Your code here. (1/2) */
-	tlbp
+	tlbp 	/*根据EntryHi 中的 Key（包含 VPN 与 ASID），查找 TLB 中与之对应的表项，*/
+		 	/*并将表项的索引存入Index 寄存器（若未找到匹配项，则Index最高位被置1）*/
 
 	nop
 	/* Step 2: Fetch the probe result from CP0.Index */
@@ -21,7 +22,8 @@ LEAF(tlb_out)
 	nop
 	/* Step 3: Use 'tlbwi' to write CP0.EntryHi/Lo into TLB at CP0.Index  */
 	/* Exercise 2.8: Your code here. (2/2) */
-	tlbwi
+	tlbwi 	/*以 Index 寄存器中的值为索引，将此时EntryHi与EntryLo0、EntryLo1 */
+			/*的值写到索引指定的TLB表项中。*/
 
 .set reorder
 
@@ -49,7 +51,9 @@ do_tlb_refill_call:
 	nop
 	/* Hint: use 'tlbwr' to write CP0.EntryHi/Lo into a random tlb entry. */
 	/* Exercise 2.10: Your code here. */
-	tlbwr
+	tlbwr	/*将 EntryHi 与 EntryLo0、EntryLo1 的数据随机写到一个 TLB 表项中*/
+			/*（此处使用Random 寄存器来“随机”指定表项，Random寄存器本质上是一个*/
+			/*不停运行的循环计数器）。*/
 
 	jr      ra
 END(do_tlb_refill)

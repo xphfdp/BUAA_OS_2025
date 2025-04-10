@@ -12,27 +12,42 @@ LIST_HEAD(Page_list, Page);
 typedef LIST_ENTRY(Page) Page_LIST_entry_t;
 
 struct Page {
-	Page_LIST_entry_t pp_link; /* free list link */
+	Page_LIST_entry_t pp_link; /* free list link, pp_link是表示链表前后节点的结构体*/
 
 	// Ref is the count of pointers (usually in page table entries)
 	// to this page.  This only holds for pages allocated using
 	// page_alloc.  Pages allocated at boot time using pmap.c's "alloc"
 	// do not have valid reference count fields.
 
-	u_short pp_ref;
+	u_short pp_ref; // 这一页物理内存被引用的次数，等于有多少虚拟页映射到该物理页，反映页的使用情况
+					// 为0时表示该页空闲，可以被分配出去
 };
 
-extern struct Page *pages;
-extern struct Page_list page_free_list;
+// 展开之后的结构：
+// 	struct Page {
+// 		struct {
+// 			struct Page *le_next;
+// 			struct Page **le_prev;
+// 		};
+// 		u_short pp_ref;
+// 	};
 
+extern struct Page *pages;
+extern struct Page_list page_free_list; // 称为空闲链表，储存空闲的物理页
+
+// 通过指针减法获取对应的页控制块是第几个页
 static inline u_long page2ppn(struct Page *pp) {
 	return pp - pages;
 }
 
+// 通过页控制块pp获取该页起始位置的物理地址（可用于填充pte）
 static inline u_long page2pa(struct Page *pp) {
-	return page2ppn(pp) << PGSHIFT;
+	//相当于*4096，也就是一页的大小(4KB)，页数乘以一页的大小即可得到其物理地址
+	// 与PPN(pa)作用相反
+	return page2ppn(pp) << PGSHIFT; 
 }
 
+// 通过物理地址pa获取该地址对应的页控制块（读取pte后可进行转换）
 static inline struct Page *pa2page(u_long pa) {
 	if (PPN(pa) >= npage) {
 		panic("pa2page called with invalid pa: %x", pa);
@@ -40,10 +55,12 @@ static inline struct Page *pa2page(u_long pa) {
 	return &pages[PPN(pa)];
 }
 
+// 通过页控制块pp获取该页起始位置的虚拟地址
 static inline u_long page2kva(struct Page *pp) {
 	return KADDR(page2pa(pp));
 }
 
+// 查页表，将虚拟地址转换为物理地址（测试时常用）
 static inline u_long va2pa(Pde *pgdir, u_long va) {
 	Pte *p;
 

@@ -7,7 +7,7 @@
 #include <types.h>
 
 #define LOG2NENV 10
-#define NENV (1 << LOG2NENV)
+#define NENV (1 << LOG2NENV) //进程的最大数量(1024)
 #define ENVX(envid) ((envid) & (NENV - 1))
 
 // All possible values of 'env_status' in 'struct Env'.
@@ -18,14 +18,20 @@
 // Control block of an environment (process).
 struct Env {
 	struct Trapframe env_tf;	 // saved context (registers) before switching
+								/*当发生进程调度，或陷入内核时，会将当时的进程上下文环境保存在env_tf变量中*/
 	LIST_ENTRY(Env) env_link;	 // intrusive entry in 'env_free_list'
-	u_int env_id;			 // unique environment identifier
+								/*类似于pp_link，用来构造空闲进程链表env_free_list*/
+	u_int env_id;			 // unique environment identifier，进程的id
 	u_int env_asid;			 // ASID of this env
-	u_int env_parent_id;		 // env_id of this env's parent
+	u_int env_parent_id;	 // env_id of this env's parent，记录父进程的进程id，由此关联可形成一棵进程树
 	u_int env_status;		 // status of this env
-	Pde *env_pgdir;			 // page directory
-	TAILQ_ENTRY(Env) env_sched_link; // intrusive entry in 'env_sched_list'
-	u_int env_pri;			 // schedule priority
+							/*表示当前进程的状态*/
+							// ENV_FREE:表示该PCB处于空闲状态，没有被任何进程使用，即该进程控制块处于进程空闲链表中
+							// ENV_NOT_RUNNABLE:表明进程处于阻塞状态，处于该状态的进程需要在一定条件下变成就绪状态从而被CPU调度
+							// ENV_RUNNABLE:该进程处于执行状态或就绪状态，即其可能是正在运行的，也可能正在等待被调度
+	Pde *env_pgdir;			 // page directory，保存该进程页目录的内核虚拟地址
+	TAILQ_ENTRY(Env) env_sched_link; // intrusive entry in 'env_sched_list'，用来构造调度队列env_sched_list
+	u_int env_pri;			 // schedule priority，表示该进程的优先级
 
 	// Lab 4 IPC
 	u_int env_ipc_value;   // the value sent to us

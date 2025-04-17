@@ -5,6 +5,7 @@
 
 #include <types.h>
 
+/*用于保存当前进程的上下文信息*/
 struct Trapframe {
 	/* Saved main processor registers. */
 	unsigned long regs[32];

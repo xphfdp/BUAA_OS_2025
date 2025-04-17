@@ -5,7 +5,7 @@
  * Part 1.  Page table/directory defines.
  */
 
-#define NASID 256
+#define NASID 256 // ASID的最大数量
 #define PAGE_SIZE 4096 // 一页的字节数
 #define PTMAP PAGE_SIZE
 #define PDMAP (4 * 1024 * 1024) // bytes mapped by a page directory entry，定义了一个一级页表页能管理的字节数
@@ -123,7 +123,7 @@
 #define KERNBASE 0x80020000
 
 #define KSTACKTOP (ULIM + PDMAP)
-#define ULIM 0x80000000
+#define ULIM 0x80000000 //kseg0和kuseg的分界线，是系统给用户进程分配的最高地址
 
 #define UVPT (ULIM - PDMAP)
 #define UPAGES (UVPT - PDMAP)

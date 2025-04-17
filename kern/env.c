@@ -60,6 +60,11 @@ static void asid_free(u_int i) {
  * Pre-Condition:
  *   'pa', 'va' and 'size' are aligned to 'PAGE_SIZE'.
  */
+// 在一级页表基地址pgdir对应的两级页表结构中做段地址映射，将虚拟地址段[va,va+size)映射到物理地址段[pa,pa+size)，
+// 因为是按页映射，所以size必须是页面大小的整数倍，同时为相关页表项的权限为设置为perm，
+// 它在这里的作用是将内核中的Page和Env数据结构映射到用户地址，以供用户程序读取。
+/*	map_segment(base_pgdir, 0, PADDR(pages), UPAGES,
+		    ROUND(npage * sizeof(struct Page), PAGE_SIZE), PTE_G);*/
 static void map_segment(Pde *pgdir, u_int asid, u_long pa, u_long va, u_int size, u_int perm) {
 
 	assert(pa % PAGE_SIZE == 0);
@@ -74,7 +79,7 @@ static void map_segment(Pde *pgdir, u_int asid, u_long pa, u_long va, u_int size
 		 *  Use 'pa2page' to get the 'struct Page *' of the physical address.
 		 */
 		/* Exercise 3.2: Your code here. */
-
+		page_insert(pgdir, asid, pa2page(pa + i), va + i, perm | PTE_V);
 	}
 }
 
@@ -87,6 +92,7 @@ static void map_segment(Pde *pgdir, u_int asid, u_long pa, u_long va, u_int size
  * Post-Condition:
  *  return e's envid on success
  */
+// 为每一个进程创建一个独一无二的id
 u_int mkenvid(struct Env *e) {
 	static u_int i = 0;
 	return ((++i) << (1 + LOG2NENV)) | (e - envs);
@@ -139,17 +145,24 @@ int envid2env(u_int envid, struct Env **penv, int checkperm) {
  * Hints:
  *   You may use these macro definitions below: 'LIST_INIT', 'TAILQ_INIT', 'LIST_INSERT_HEAD'
  */
+// 初始化所有进程
 void env_init(void) {
 	int i;
 	/* Step 1: Initialize 'env_free_list' with 'LIST_INIT' and 'env_sched_list' with
 	 * 'TAILQ_INIT'. */
 	/* Exercise 3.1: Your code here. (1/2) */
+	LIST_INIT(&env_free_list); //初始化空闲进程链表
+	TAILQ_INIT(&env_sched_list); //初始化调度进程链表
 
 	/* Step 2: Traverse the elements of 'envs' array, set their status to 'ENV_FREE' and insert
 	 * them into the 'env_free_list'. Make sure, after the insertion, the order of envs in the
 	 * list should be the same as they are in the 'envs' array. */
 
 	/* Exercise 3.1: Your code here. (2/2) */
+	for (i = NENV - 1;i >= 0;i--) { //倒序
+		envs[i].env_status = ENV_FREE; //初始所有进程的状态都是FREE
+		LIST_INSERT_HEAD(&env_free_list, &envs[i], env_link); //将进程倒序插入到空闲链表头
+	}
 
 	/*
 	 * We want to map 'UPAGES' and 'UENVS' to *every* user space with PTE_G permission (without
@@ -165,14 +178,15 @@ void env_init(void) {
 
 	base_pgdir = (Pde *)page2kva(p);
 	map_segment(base_pgdir, 0, PADDR(pages), UPAGES,
-		    ROUND(npage * sizeof(struct Page), PAGE_SIZE), PTE_G);
+		    ROUND(npage * sizeof(struct Page), PAGE_SIZE), PTE_G); //将pages映射到用户空间的UPAGES
 	map_segment(base_pgdir, 0, PADDR(envs), UENVS, ROUND(NENV * sizeof(struct Env), PAGE_SIZE),
-		    PTE_G);
+		    PTE_G); //将envs映射到用户空间的UENVS
 }
 
 /* Overview:
  *   Initialize the user address space for 'e'.
  */
+//初始化新进程的地址空间
 static int env_setup_vm(struct Env *e) {
 	/* Step 1:
 	 *   Allocate a page for the page directory with 'page_alloc'.
@@ -184,6 +198,8 @@ static int env_setup_vm(struct Env *e) {
 	struct Page *p;
 	try(page_alloc(&p));
 	/* Exercise 3.3: Your code here. */
+	p->pp_ref++;
+	e->env_pgdir = (Pde *)page2kva(p);
 
 	/* Step 2: Copy the template page directory 'base_pgdir' to 'e->env_pgdir'. */
 	/* Hint:
@@ -224,9 +240,16 @@ int env_alloc(struct Env **new, u_int parent_id) {
 
 	/* Step 1: Get a free Env from 'env_free_list' */
 	/* Exercise 3.4: Your code here. (1/4) */
+	if (LIST_EMPTY(&env_free_list)) {
+		return -E_NO_FREE_ENV;
+	}
+	e = LIST_FIRST(&env_free_list);
 
 	/* Step 2: Call a 'env_setup_vm' to initialize the user address space for this new Env. */
 	/* Exercise 3.4: Your code here. (2/4) */
+	if ((r = env_setup_vm(e)) != 0) {
+		return r;
+	}
 
 	/* Step 3: Initialize these fields for the new Env with appropriate values:
 	 *   'env_user_tlb_mod_entry' (lab4), 'env_runs' (lab6), 'env_id' (lab3), 'env_asid' (lab3),
@@ -239,6 +262,11 @@ int env_alloc(struct Env **new, u_int parent_id) {
 	e->env_user_tlb_mod_entry = 0; // for lab4
 	e->env_runs = 0;	       // for lab6
 	/* Exercise 3.4: Your code here. (3/4) */
+	e->env_id = mkenvid(e);
+	e->env_parent_id = parent_id;
+	if ((r = asid_alloc(&e->env_asid)) != 0) {
+		return r;
+	}
 
 	/* Step 4: Initialize the sp and 'cp0_status' in 'e->env_tf'.
 	 *   Set the EXL bit to ensure that the processor remains in kernel mode during context
@@ -247,10 +275,11 @@ int env_alloc(struct Env **new, u_int parent_id) {
 	 */
 	e->env_tf.cp0_status = STATUS_IM7 | STATUS_IE | STATUS_EXL | STATUS_UM;
 	// Reserve space for 'argc' and 'argv'.
-	e->env_tf.regs[29] = USTACKTOP - sizeof(int) - sizeof(char **);
+	e->env_tf.regs[29] = USTACKTOP - sizeof(int) - sizeof(char **); //设置用户栈的栈指针
 
 	/* Step 5: Remove the new Env from env_free_list. */
 	/* Exercise 3.4: Your code here. (4/4) */
+	LIST_REMOVE(e, env_link);
 
 	*new = e;
 	return 0;
@@ -281,13 +310,16 @@ static int load_icode_mapper(void *data, u_long va, size_t offset, u_int perm, c
 
 	/* Step 1: Allocate a page with 'page_alloc'. */
 	/* Exercise 3.5: Your code here. (1/2) */
+	if ((r = page_alloc(&p)) != 0) {
+		return r;
+	}
 
 	/* Step 2: If 'src' is not NULL, copy the 'len' bytes started at 'src' into 'offset' at this
 	 * page. */
 	// Hint: You may want to use 'memcpy'.
 	if (src != NULL) {
 		/* Exercise 3.5: Your code here. (2/2) */
-
+		memcpy((void *)page2kva(p) + offset, src, len);
 	}
 
 	/* Step 3: Insert 'p' into 'env->env_pgdir' at 'va' with 'perm'. */
@@ -299,8 +331,10 @@ static int load_icode_mapper(void *data, u_long va, size_t offset, u_int perm, c
  *   'binary' points to an ELF executable image of 'size' bytes, which contains both text and data
  *   segments.
  */
+//加载可执行文件binary到进程e的内存中
 static void load_icode(struct Env *e, const void *binary, size_t size) {
 	/* Step 1: Use 'elf_from' to parse an ELF header from 'binary'. */
+	// 使用elf_from解析ELF文件头
 	const Elf32_Ehdr *ehdr = elf_from(binary, size);
 	if (!ehdr) {
 		panic("bad elf at %x", binary);
@@ -322,7 +356,10 @@ static void load_icode(struct Env *e, const void *binary, size_t size) {
 
 	/* Step 3: Set 'e->env_tf.cp0_epc' to 'ehdr->e_entry'. */
 	/* Exercise 3.6: Your code here. */
-
+	// env_tf.cp0_epc指示了进程恢复运行时PC应恢复到的位置，
+	// 我们要运行的进程的代码段预先被载入到了内存中，且程序入口为e_entry，
+	// 当我们运行进程时，CPU将自动从PC所指的位置开始执行二进制码
+	e->env_tf.cp0_epc = ehdr->e_entry;
 }
 
 /* Overview:
@@ -333,17 +370,23 @@ static void load_icode(struct Env *e, const void *binary, size_t size) {
  * Hint:
  *   'binary' is an ELF executable image in memory.
  */
+// 创建一个进程（在操作系统内核初始化时直接创建进程）
 struct Env *env_create(const void *binary, size_t size, int priority) {
 	struct Env *e;
 	/* Step 1: Use 'env_alloc' to alloc a new env, with 0 as 'parent_id'. */
 	/* Exercise 3.7: Your code here. (1/3) */
+	env_alloc(&e, 0);
 
 	/* Step 2: Assign the 'priority' to 'e' and mark its 'env_status' as runnable. */
 	/* Exercise 3.7: Your code here. (2/3) */
+	e->env_pri = priority;
+	e->env_status = ENV_RUNNABLE;
 
 	/* Step 3: Use 'load_icode' to load the image from 'binary', and insert 'e' into
 	 * 'env_sched_list' using 'TAILQ_INSERT_HEAD'. */
 	/* Exercise 3.7: Your code here. (3/3) */
+	load_icode(e, binary, size);
+	TAILQ_INSERT_HEAD(&env_sched_list, e, env_sched_link);
 
 	return e;
 }
@@ -351,6 +394,7 @@ struct Env *env_create(const void *binary, size_t size, int priority) {
 /* Overview:
  *  Free env e and all memory it uses.
  */
+// 释放进程以及其所使用的内存
 void env_free(struct Env *e) {
 	Pte *pt;
 	u_int pdeno, pteno, pa;
@@ -424,6 +468,7 @@ extern void env_pop_tf(struct Trapframe *tf, u_int asid) __attribute__((noreturn
  * Hints:
  *   You may use these functions: 'env_pop_tf'.
  */
+// 进程运行
 void env_run(struct Env *e) {
 	assert(e->env_status == ENV_RUNNABLE);
 	// WARNING BEGIN: DO NOT MODIFY FOLLOWING LINES!
@@ -438,6 +483,8 @@ void env_run(struct Env *e) {
 	 *   'curenv->env_tf' first.
 	 */
 	if (curenv) {
+		// 保存当前进程上下文（进程上下文就是进程执行时所有寄存器的状态，或者说就是Trapframe）,
+		// 包括通用寄存器、HI、LO和CP0中的Status,EPC,Cause和BadVAddr寄存器
 		curenv->env_tf = *((struct Trapframe *)KSTACKTOP - 1);
 	}
 
@@ -447,6 +494,7 @@ void env_run(struct Env *e) {
 
 	/* Step 3: Change 'cur_pgdir' to 'curenv->env_pgdir', switching to its address space. */
 	/* Exercise 3.8: Your code here. (1/2) */
+	cur_pgdir = curenv->env_pgdir;
 
 	/* Step 4: Use 'env_pop_tf' to restore the curenv's saved context (registers) and return/go
 	 * to user mode.
@@ -457,7 +505,7 @@ void env_run(struct Env *e) {
 	 *    returning to the kernel caller, making 'env_run' a 'noreturn' function as well.
 	 */
 	/* Exercise 3.8: Your code here. (2/2) */
-
+	env_pop_tf(&curenv->env_tf, curenv->env_asid);
 }
 
 void env_check() {

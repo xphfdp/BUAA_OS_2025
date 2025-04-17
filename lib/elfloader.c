@@ -1,6 +1,7 @@
 #include <elf.h>
 #include <pmap.h>
 
+//解析ELF文件头的部分
 const Elf32_Ehdr *elf_from(const void *binary, size_t size) {
 	const Elf32_Ehdr *ehdr = (const Elf32_Ehdr *)binary;
 	if (size >= sizeof(Elf32_Ehdr) && ehdr->e_ident[EI_MAG0] == ELFMAG0 &&
@@ -22,6 +23,7 @@ const Elf32_Ehdr *elf_from(const void *binary, size_t size) {
  *   Return 0 if success. Otherwise return < 0.
  *   If success, the entry point of `binary` will be stored in `start`
  */
+// 将ELF文件的一个segment加载到内存
 int elf_load_seg(Elf32_Phdr *ph, const void *bin, elf_mapper_t map_page, void *data) {
 	u_long va = ph->p_vaddr;
 	size_t bin_size = ph->p_filesz;

@@ -43,10 +43,11 @@ void schedule(int yield) {
 			}
 		}
 		if (TAILQ_EMPTY(&env_sched_list)) {
-			panic("env_sched_list is empty!!!");
+			panic("no runnable env");
 		}
 		e = TAILQ_FIRST(&env_sched_list);
 		count = e->env_pri;
+		count--;
 		env_run(e);
 	} else {
 		count--;

@@ -9,6 +9,14 @@ extern void handle_sys(void);
 extern void handle_mod(void);
 extern void handle_reserved(void);
 
+// 异常向量组
+/*
+* 0号异常的处理函数为handle_int，表示中断，由时钟中断、控制台中断等中断造成
+* 1号异常的处理函数为handle_mod，表示存储异常，进行存储操作时该页被标记为只读 
+* 2号异常的处理函数为handle_tlb，表示TLB load异常
+* 3号异常的处理函数为handle_tlb，表示TLB store异常
+* 8号异常的处理函数为handle_sys，表示系统调用，用户进程通过执行syscall指令陷入内核
+*/
 void (*exception_handlers[32])(void) = {
     [0 ... 31] = handle_reserved,
     [0] = handle_int,

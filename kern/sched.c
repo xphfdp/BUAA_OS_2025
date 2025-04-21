@@ -15,8 +15,8 @@
  *   3. You shouldn't use any 'return' statement because this function is 'noreturn'.
  */
 void schedule(int yield) {
-	static int count = 0; // remaining time slices of current env
-	struct Env *e = curenv;
+	static int count = 0; // remaining time slices of current env，进程剩余的时间片
+	struct Env *e = curenv; // 当前运行的进程
 
 	/* We always decrease the 'count' by 1.
 	 *

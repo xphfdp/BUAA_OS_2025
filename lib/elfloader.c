@@ -2,6 +2,7 @@
 #include <pmap.h>
 
 //解析ELF文件头的部分
+// 进行简单的类型转换，同时通过魔数检查是否确为ELF文件头
 const Elf32_Ehdr *elf_from(const void *binary, size_t size) {
 	const Elf32_Ehdr *ehdr = (const Elf32_Ehdr *)binary;
 	if (size >= sizeof(Elf32_Ehdr) && ehdr->e_ident[EI_MAG0] == ELFMAG0 &&
@@ -24,6 +25,8 @@ const Elf32_Ehdr *elf_from(const void *binary, size_t size) {
  *   If success, the entry point of `binary` will be stored in `start`
  */
 // 将ELF文件的一个segment加载到内存
+// 根据程序头表中的信息将bin中的数据加载到指定位置
+// map_page是一个回调函数，将数据映射到虚拟地址所在的页上，data是回调函数中使用的参数
 int elf_load_seg(Elf32_Phdr *ph, const void *bin, elf_mapper_t map_page, void *data) {
 	u_long va = ph->p_vaddr;
 	size_t bin_size = ph->p_filesz;

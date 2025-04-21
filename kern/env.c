@@ -172,6 +172,9 @@ void env_init(void) {
 	 * Here we first map them into the *template* page directory 'base_pgdir'.
 	 * Later in 'env_setup_vm', we will copy them into each 'env_pgdir'.
 	 */
+	// 创建一个“模板页目录”，设置该页将pages和envs分别映射到用户区的UPAGES和UENVS（位于UTOP和UVPT之间），
+	// 在后续进程创建新的页目录时，要首先复制模板页目录中的内容。
+	// 目的是使用户程序也能通过UPAGES和UENVS读取pages和envs中的内容（Page和Env的信息）
 	struct Page *p;
 	panic_on(page_alloc(&p));
 	p->pp_ref++;
@@ -186,7 +189,7 @@ void env_init(void) {
 /* Overview:
  *   Initialize the user address space for 'e'.
  */
-//初始化新进程的地址空间
+//初始化新进程的地址空间，也就是为进程创建一个对应的二级页表
 static int env_setup_vm(struct Env *e) {
 	/* Step 1:
 	 *   Allocate a page for the page directory with 'page_alloc'.
@@ -206,11 +209,14 @@ static int env_setup_vm(struct Env *e) {
 	 *   As a result, the address space of all envs is identical in [UTOP, UVPT).
 	 *   See include/mmu.h for layout.
 	 */
+	// 复制env_init()所创建的模板页目录的内容
 	memcpy(e->env_pgdir + PDX(UTOP), base_pgdir + PDX(UTOP),
-	       sizeof(Pde) * (PDX(UVPT) - PDX(UTOP)));
+	       sizeof(Pde) * (PDX(UVPT) - PDX(UT OP)));
 
 	/* Step 3: Map its own page table at 'UVPT' with readonly permission.
 	 * As a result, user programs can read its page table through 'UVPT' */
+	// 自映射，在用户内存空间中划分出一部分，使得用户可以通过访问这部分空间得到二级页表以及页目录中的数据。
+	// 'UVPT'意为"user virtual page table"
 	e->env_pgdir[PDX(UVPT)] = PADDR(e->env_pgdir) | PTE_V;
 	return 0;
 }
@@ -234,12 +240,15 @@ static int env_setup_vm(struct Env *e) {
  *     'env_id', 'env_asid', 'env_parent_id', 'env_tf.regs[29]', 'env_tf.cp0_status',
  *     'env_user_tlb_mod_entry', 'env_runs'
  */
+//分配一个新的空闲进程控制块
 int env_alloc(struct Env **new, u_int parent_id) {
 	int r;
 	struct Env *e;
 
 	/* Step 1: Get a free Env from 'env_free_list' */
 	/* Exercise 3.4: Your code here. (1/4) */
+	// 如果不存在空闲进程，返回异常值，
+	// 否则取出空闲进程链表的头部元素
 	if (LIST_EMPTY(&env_free_list)) {
 		return -E_NO_FREE_ENV;
 	}
@@ -247,6 +256,8 @@ int env_alloc(struct Env **new, u_int parent_id) {
 
 	/* Step 2: Call a 'env_setup_vm' to initialize the user address space for this new Env. */
 	/* Exercise 3.4: Your code here. (2/4) */
+	// 初始化所申请进程的用户地址空间，也就是为进程创建一个对应的二级页表，
+	// 如果无法申请则返回异常值
 	if ((r = env_setup_vm(e)) != 0) {
 		return r;
 	}
@@ -259,6 +270,7 @@ int env_alloc(struct Env **new, u_int parent_id) {
 	 *   Use 'asid_alloc' to allocate a free asid.
 	 *   Use 'mkenvid' to allocate a free envid.
 	 */
+	// 手动设置进程的进程控制块的内容（ID、ASID、parent_ID）
 	e->env_user_tlb_mod_entry = 0; // for lab4
 	e->env_runs = 0;	       // for lab6
 	/* Exercise 3.4: Your code here. (3/4) */
@@ -273,12 +285,18 @@ int env_alloc(struct Env **new, u_int parent_id) {
 	 * recovery. Additionally, set UM to 1 so that when ERET unsets EXL, the processor
 	 * transitions to user mode.
 	 */
+	// 设置进程status寄存器和sp(栈)寄存器的值
+	// 设置status寄存器的值为STATUS_IM7 | STATUS_IE | STATUS_EXL | STATUS_UM
+	// IE位表示中断是否开启，为1则开启，将IE和IM7设置为1表示中断使能且能够响应7号中断（时钟中断）
+	// 当且仅当EXL被设置为0且UM被设置为1时处理器处于用户模式，否则处于内核模式
 	e->env_tf.cp0_status = STATUS_IM7 | STATUS_IE | STATUS_EXL | STATUS_UM;
 	// Reserve space for 'argc' and 'argv'.
+	// 为了给main函数的参数argc和argc留出空间，所以需要减去sizeof(int) + sizeof(char **)
 	e->env_tf.regs[29] = USTACKTOP - sizeof(int) - sizeof(char **); //设置用户栈的栈指针
 
 	/* Step 5: Remove the new Env from env_free_list. */
 	/* Exercise 3.4: Your code here. (4/4) */
+	// 从空闲进程链表中删除这一进程
 	LIST_REMOVE(e, env_link);
 
 	*new = e;
@@ -331,10 +349,10 @@ static int load_icode_mapper(void *data, u_long va, size_t offset, u_int perm, c
  *   'binary' points to an ELF executable image of 'size' bytes, which contains both text and data
  *   segments.
  */
-//加载可执行文件binary到进程e的内存中
+//加载可执行文件binary（ELF程序）到进程e的内存中
 static void load_icode(struct Env *e, const void *binary, size_t size) {
 	/* Step 1: Use 'elf_from' to parse an ELF header from 'binary'. */
-	// 使用elf_from解析ELF文件头
+	// 使用elf_from解析ELF文件头，读取页表信息
 	const Elf32_Ehdr *ehdr = elf_from(binary, size);
 	if (!ehdr) {
 		panic("bad elf at %x", binary);
@@ -343,6 +361,7 @@ static void load_icode(struct Env *e, const void *binary, size_t size) {
 	/* Step 2: Load the segments using 'ELF_FOREACH_PHDR_OFF' and 'elf_load_seg'.
 	 * As a loader, we just care about loadable segments, so parse only program headers here.
 	 */
+	// 使用ELF_FOREACH_PHDR_OFF遍历所有程序头表
 	size_t ph_off;
 	ELF_FOREACH_PHDR_OFF (ph_off, ehdr) {
 		Elf32_Phdr *ph = (Elf32_Phdr *)(binary + ph_off);
@@ -375,16 +394,19 @@ struct Env *env_create(const void *binary, size_t size, int priority) {
 	struct Env *e;
 	/* Step 1: Use 'env_alloc' to alloc a new env, with 0 as 'parent_id'. */
 	/* Exercise 3.7: Your code here. (1/3) */
+	// 分配一个空闲进程
 	env_alloc(&e, 0);
 
 	/* Step 2: Assign the 'priority' to 'e' and mark its 'env_status' as runnable. */
 	/* Exercise 3.7: Your code here. (2/3) */
+	// 设置该进程的优先级，将该进程的状态设置为就绪态
 	e->env_pri = priority;
 	e->env_status = ENV_RUNNABLE;
 
 	/* Step 3: Use 'load_icode' to load the image from 'binary', and insert 'e' into
 	 * 'env_sched_list' using 'TAILQ_INSERT_HEAD'. */
 	/* Exercise 3.7: Your code here. (3/3) */
+	// 为进程加载ELF程序，同时将该程序加入到调度队列中
 	load_icode(e, binary, size);
 	TAILQ_INSERT_HEAD(&env_sched_list, e, env_sched_link);
 
@@ -488,7 +510,7 @@ void env_run(struct Env *e) {
 		curenv->env_tf = *((struct Trapframe *)KSTACKTOP - 1);
 	}
 
-	/* Step 2: Change 'curenv' to 'e'. */
+	/* Step 2: Change 'curenv' to 'e'. 切换进程*/
 	curenv = e;
 	curenv->env_runs++; // lab6
 
@@ -505,6 +527,7 @@ void env_run(struct Env *e) {
 	 *    returning to the kernel caller, making 'env_run' a 'noreturn' function as well.
 	 */
 	/* Exercise 3.8: Your code here. (2/2) */
+	// 还原进程上下文
 	env_pop_tf(&curenv->env_tf, curenv->env_asid);
 }
 

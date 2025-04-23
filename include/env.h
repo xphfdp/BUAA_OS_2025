@@ -10,7 +10,7 @@
 #define NENV (1 << LOG2NENV) //进程的最大数量(1024)
 #define ENVX(envid) ((envid) & (NENV - 1))
 
-// All possible values of 'env_status' in 'struct Env'.
+// All possible values of 'env_status' in 'struct Env'，表示进程的状态.
 #define ENV_FREE 0
 #define ENV_RUNNABLE 1
 #define ENV_NOT_RUNNABLE 2
@@ -19,11 +19,11 @@
 struct Env {
 	struct Trapframe env_tf;	 // saved context (registers) before switching
 								/*当发生进程调度，或陷入内核时，会将当时的进程上下文环境保存在env_tf变量中*/
-								// 上下文环境指的是各种寄存器的值
+								// 上下文环境指的是各种寄存器的值，比如CP0中的status寄存器
 	LIST_ENTRY(Env) env_link;	 // intrusive entry in 'env_free_list'
 								/*类似于pp_link，用来构造空闲进程链表env_free_list*/
-	u_int env_id;			 // unique environment identifier，进程的id
-	u_int env_asid;			 // ASID of this env，表示进程的ASID，用于TLB中
+	u_int env_id;			 // unique environment identifier，进程的id，独一无二
+	u_int env_asid;			 // ASID of this env，表示进程的ASID，用于TLB中，是进程虚拟地址空间的标识
 	u_int env_parent_id;	 // env_id of this env's parent，记录父进程的进程id，由此关联可形成一棵进程树
 	u_int env_status;		 // status of this env
 							/*表示当前进程的状态*/

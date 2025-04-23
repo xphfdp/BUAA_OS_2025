@@ -139,13 +139,13 @@ int envid2env(u_int envid, struct Env **penv, int checkperm) {
 }
 
 /* Overview:
- *   Mark all environments in 'envs' as free and insert them into the 'env_free_list'.
- *   Insert in reverse order, so that the first call to 'env_alloc' returns 'envs[0]'.
+ *   将 'envs' 中的所有env标记为可用，并将它们插入到 'env_free_list' 中。
+ *   按照相反的顺序插入，以便第一次调用'env_alloc'时返回'envs[0]'。
  *
  * Hints:
  *   You may use these macro definitions below: 'LIST_INIT', 'TAILQ_INIT', 'LIST_INSERT_HEAD'
  */
-// 初始化所有进程
+// 进程控制的初始化
 void env_init(void) {
 	int i;
 	/* Step 1: Initialize 'env_free_list' with 'LIST_INIT' and 'env_sched_list' with
@@ -160,8 +160,8 @@ void env_init(void) {
 
 	/* Exercise 3.1: Your code here. (2/2) */
 	for (i = NENV - 1;i >= 0;i--) { //倒序
-		envs[i].env_status = ENV_FREE; //初始所有进程的状态都是FREE
-		LIST_INSERT_HEAD(&env_free_list, &envs[i], env_link); //将进程倒序插入到空闲链表头
+		envs[i].env_status = ENV_FREE; //初始所有进程控制块的状态都是FREE
+		LIST_INSERT_HEAD(&env_free_list, &envs[i], env_link); //将进程控制块倒序插入到空闲链表头
 	}
 
 	/*
@@ -188,6 +188,7 @@ void env_init(void) {
 
 /* Overview:
  *   Initialize the user address space for 'e'.
+ *   初始化新进程e的用户地址空间
  */
 //初始化新进程的地址空间，也就是为进程创建一个对应的二级页表
 static int env_setup_vm(struct Env *e) {
@@ -211,7 +212,7 @@ static int env_setup_vm(struct Env *e) {
 	 */
 	// 复制env_init()所创建的模板页目录的内容
 	memcpy(e->env_pgdir + PDX(UTOP), base_pgdir + PDX(UTOP),
-	       sizeof(Pde) * (PDX(UVPT) - PDX(UT OP)));
+	       sizeof(Pde) * (PDX(UVPT) - PDX(UTOP)));
 
 	/* Step 3: Map its own page table at 'UVPT' with readonly permission.
 	 * As a result, user programs can read its page table through 'UVPT' */
@@ -240,7 +241,8 @@ static int env_setup_vm(struct Env *e) {
  *     'env_id', 'env_asid', 'env_parent_id', 'env_tf.regs[29]', 'env_tf.cp0_status',
  *     'env_user_tlb_mod_entry', 'env_runs'
  */
-//分配一个新的空闲进程控制块
+// 分配一个新的空闲进程控制块
+// 申请并初始化一个进程控制块
 int env_alloc(struct Env **new, u_int parent_id) {
 	int r;
 	struct Env *e;
@@ -337,7 +339,7 @@ static int load_icode_mapper(void *data, u_long va, size_t offset, u_int perm, c
 	// Hint: You may want to use 'memcpy'.
 	if (src != NULL) {
 		/* Exercise 3.5: Your code here. (2/2) */
-		memcpy((void *)page2kva(p) + offset, src, len);
+		memcpy((void *)(page2kva(p) + offset), src, len);
 	}
 
 	/* Step 3: Insert 'p' into 'env->env_pgdir' at 'va' with 'perm'. */
@@ -348,6 +350,7 @@ static int load_icode_mapper(void *data, u_long va, size_t offset, u_int perm, c
  *   Load program segments from 'binary' into user space of the env 'e'.
  *   'binary' points to an ELF executable image of 'size' bytes, which contains both text and data
  *   segments.
+ *    binary指的是size大小的可执行ELF文件，包含数据段和代码段
  */
 //加载可执行文件binary（ELF程序）到进程e的内存中
 static void load_icode(struct Env *e, const void *binary, size_t size) {
@@ -394,11 +397,12 @@ struct Env *env_create(const void *binary, size_t size, int priority) {
 	struct Env *e;
 	/* Step 1: Use 'env_alloc' to alloc a new env, with 0 as 'parent_id'. */
 	/* Exercise 3.7: Your code here. (1/3) */
-	// 分配一个空闲进程
+	// 申请并初始化一个进程控制块
 	env_alloc(&e, 0);
 
 	/* Step 2: Assign the 'priority' to 'e' and mark its 'env_status' as runnable. */
 	/* Exercise 3.7: Your code here. (2/3) */
+	// 初始化申请的进程控制块
 	// 设置该进程的优先级，将该进程的状态设置为就绪态
 	e->env_pri = priority;
 	e->env_status = ENV_RUNNABLE;
@@ -527,7 +531,7 @@ void env_run(struct Env *e) {
 	 *    returning to the kernel caller, making 'env_run' a 'noreturn' function as well.
 	 */
 	/* Exercise 3.8: Your code here. (2/2) */
-	// 还原进程上下文
+	// 恢复进程上下文
 	env_pop_tf(&curenv->env_tf, curenv->env_asid);
 }
 

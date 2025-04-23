@@ -47,10 +47,7 @@ void schedule(int yield) {
 		}
 		e = TAILQ_FIRST(&env_sched_list);
 		count = e->env_pri;
-		count--;
-		env_run(e);
-	} else {
-		count--;
-		env_run(e);
 	}
+	count--;
+	env_run(e);
 }

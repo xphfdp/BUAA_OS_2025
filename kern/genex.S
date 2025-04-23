@@ -21,11 +21,11 @@ NESTED(handle_int, TF_SIZE, zero)
 	mfc0    t0, CP0_CAUSE
 	mfc0    t2, CP0_STATUS
 	and     t0, t2
-	andi    t1, t0, STATUS_IM7
-	bnez    t1, timer_irq
+	andi    t1, t0, STATUS_IM7 # 7号中断位为时钟中断
+	bnez    t1, timer_irq # 判断是否发生时钟中断（是时钟中断且时钟中断是否开启）
 timer_irq:
 	li      a0, 0
-	j       schedule
+	j       schedule # 跳转到调度函数
 END(handle_int)
 
 BUILD_HANDLER tlb do_tlb_refill

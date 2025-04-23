@@ -1,10 +1,14 @@
 #include <asm/asm.h>
 #include <stackframe.h>
 
-.section .text.tlb_miss_entry
+/*异常分发程序，用于检测发生了哪种异常*/
+
+/*处理TLB miss异常*/
+.section .text.tlb_miss_entry 
 tlb_miss_entry:
 	j       exc_gen_entry
 
+/*处理其他异常*/
 .section .text.exc_gen_entry
 exc_gen_entry:
 	/*将当前上下文保存到内核的异常栈中*/

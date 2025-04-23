@@ -3,6 +3,7 @@
 
 #include <asm/asm.h>
 
+// 时钟中断间隔
 #define TIMER_INTERVAL (500000) // WARNING: DO NOT MODIFY THIS LINE!
 
 // clang-format off
@@ -17,6 +18,8 @@
 	 *
 	 */
 	/* Exercise 3.11: Your code here. */
+	// 配置Timer
+	// CP0_COUNT不断自增，CP0_COMPARE不变，当二者相等时发生一次时钟中断
 	mtc0	zero, CP0_COUNT
 	mtc0	t0, CP0_COMPARE
 

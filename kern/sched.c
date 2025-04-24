@@ -21,25 +21,31 @@
  * 所有任务都是周期性的（存在周期T），必须在限定的时限内完成（存在截至周期D）
  */
 void schedule(int yield) {
-	static int count = 0; // remaining time slices of current env，进程剩余的时间片
-	struct Env *e = curenv; // 当前运行的进程
+	static int clock = -1; //当前时间片，从0开始计数
+	clock++;
+	struct Env *last_rr = NULL;
+	struct Env *iter1 = NULL;
+	struct Env *iter2 = NULL;
+	struct Env *edf_result = NULL;
+	LIST_FOREACH(iter1, &env_edf_sched_list, env_edf_sched_link) {
+		if (clock == iter1->env_period_deadline) {
+			iter1->env_period_deadline++;
+			iter1->env_runtime_left = iter1->env_edf_runtime;
+		}
+	}
+	
+	u_int max_deadline = 111111111;
+	LIST_FOREACH(iter2, &env_edf_sched_list, env_edf_sched_link) {
+		if (iter2->env_runtime_left > 0 && iter2->env_period_deadline < max_deadline) {
+			edf_result = iter2;
+			max_deadline = iter2->env_period_deadline;
+		}
+	}
 
-	/* We always decrease the 'count' by 1.
-	 *
-	 * If 'yield' is set, or 'count' has been decreased to 0, or 'e' (previous 'curenv') is
-	 * 'NULL', or 'e' is not runnable, then we pick up a new env from 'env_sched_list' (list of
-	 * all runnable envs), set 'count' to its priority, and schedule it with 'env_run'. **Panic
-	 * if that list is empty**.
-	 *
-	 * (Note that if 'e' is still a runnable env, we should move it to the tail of
-	 * 'env_sched_list' before picking up another env from its head, or we will schedule the
-	 * head env repeatedly.)
-	 *
-	 * Otherwise, we simply schedule 'e' again.
-	 *
-	 * You may want to use macros below:
-	 *   'TAILQ_FIRST', 'TAILQ_REMOVE', 'TAILQ_INSERT_TAIL'
-	 */
+	static int count = 0; // remaining time slices of current env，进程剩余的时间片
+	struct Env *e = last_rr; // 当前运行的进程
+
+
 	/* Exercise 3.12: Your code here. */
 	if (yield != 0 || count == 0 || e == NULL || e->env_status != ENV_RUNNABLE) {
 		if (e != NULL) {
@@ -55,7 +61,12 @@ void schedule(int yield) {
 		count = e->env_pri;
 	}
 	count--;
-	env_run(e);
+	if (LIST_EMPTY(&env_edf_sched_list) || edf_result == NULL) {
+		last_rr = e;
+		env_run(e);
+	} else {
+		env_run(edf_result);
+	}
 }
 
 /*多用户调度算法，每次都会运行已经使用过的时间片最少的用户的进程（相同时取id小者）*/

@@ -17,6 +17,11 @@
 
 // Control block of an environment (process).
 struct Env {
+	LIST_ENTRY(Env) env_edf_sched_link;
+	u_int env_edf_runtime;
+	u_int env_edf_period;
+	u_int env_period_deadline;
+	u_int env_runtime_left;
 	struct Trapframe env_tf;	 // saved context (registers) before switching
 								/*当发生进程调度，或陷入内核时，会将当时的进程上下文环境保存在env_tf变量中*/
 								// 上下文环境指的是各种寄存器的值，比如CP0中的status寄存器
@@ -47,6 +52,10 @@ struct Env {
 	// Lab 6 scheduler counts
 	u_int env_runs; // number of times we've been env_run'ed
 };
+
+LIST_HEAD(Env_edf_sched_list, Env);
+extern struct Env_edf_sched_list env_edf_sched_list;
+struct Env *env_create_edf(const void *binary, size_t size, int runtime, int period);
 
 LIST_HEAD(Env_list, Env);
 TAILQ_HEAD(Env_sched_list, Env);

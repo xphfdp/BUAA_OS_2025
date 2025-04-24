@@ -13,6 +13,7 @@ static struct Env_list env_free_list; // Free list
 
 // Invariant: 'env' in 'env_sched_list' iff. 'env->env_status' is 'RUNNABLE'.
 struct Env_sched_list env_sched_list; // Runnable list
+struct Env_edf_sched_list env_edf_sched_list;
 
 static Pde *base_pgdir;
 
@@ -207,6 +208,7 @@ void env_init(void) {
 	/* Exercise 3.1: Your code here. (1/2) */
 	LIST_INIT(&env_free_list); //初始化空闲进程链表
 	TAILQ_INIT(&env_sched_list); //初始化调度进程链表
+	LIST_INIT(&env_edf_sched_list);
 
 	/* Step 2: Traverse the elements of 'envs' array, set their status to 'ENV_FREE' and insert
 	 * them into the 'env_free_list'. Make sure, after the insertion, the order of envs in the
@@ -470,6 +472,22 @@ struct Env *env_create(const void *binary, size_t size, int priority) {
 
 	return e;
 }
+
+struct Env *env_create_edf(const void *binary, size_t size, int runtime, int period) {
+	struct Env *e;
+
+	env_alloc(&e, 0);
+	
+	e->env_edf_runtime = runtime;
+	e->env_edf_period = period;
+	e->env_period_deadline = 0;
+	e->env_status = ENV_RUNNABLE;
+
+	load_icode(e, binary, size);
+	LIST_INSERT_HEAD(&env_edf_sched_list, e, env_edf_sched_link);
+
+	return e;
+} 
 
 /* Overview:
  *  Free env e and all memory it uses.

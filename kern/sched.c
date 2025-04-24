@@ -23,7 +23,7 @@
 void schedule(int yield) {
 	static int clock = -1; //当前时间片，从0开始计数
 	clock++;
-	struct Env *last_rr = NULL;
+	static struct Env *last_rr = NULL;
 	struct Env *iter1 = NULL;
 	struct Env *iter2 = NULL;
 	struct Env *edf_result = NULL;
@@ -53,11 +53,11 @@ void schedule(int yield) {
 			}
 		}
 	}
-	if (!LIST_EMPTY(&env_edf_sched_list) && edf_result != NULL) 
+	if (edf_result != NULL) 
 	{	
 		edf_result->env_runtime_left--;
 		env_run(edf_result);
-	}
+	}	
 
 	static int count = 0; // remaining time slices of current env，进程剩余的时间片
 	struct Env *e = last_rr; // 当前运行的进程

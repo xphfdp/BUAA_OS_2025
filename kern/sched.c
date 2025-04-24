@@ -52,6 +52,11 @@ void schedule(int yield) {
 			}
 		}
 	}
+//	if (!LIST_EMPTY(&env_edf_sched_list) && edf_result != NULL) 
+//	{	
+//		edf_result->env_runtime_left--;
+//		env_run(edf_result);
+//	}
 
 	static int count = 0; // remaining time slices of current env，进程剩余的时间片
 	struct Env *e = last_rr; // 当前运行的进程
@@ -71,11 +76,15 @@ void schedule(int yield) {
 		e = TAILQ_FIRST(&env_sched_list);
 		count = e->env_pri;
 	}
+//	count--;
+//	last_rr = e;
+//	env_run(e);
 	if (LIST_EMPTY(&env_edf_sched_list) || edf_result == NULL) {
 		last_rr = e;
 		count--;
 		env_run(e);
 	} else {
+		edf_result->env_runtime_left--;
 		env_run(edf_result);
 	}
 }

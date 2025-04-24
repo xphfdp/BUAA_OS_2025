@@ -14,6 +14,11 @@
  *   2. Use variable 'env_sched_list', which contains and only contains all runnable envs.
  *   3. You shouldn't use any 'return' statement because this function is 'noreturn'.
  */
+/*
+ * 最早截止期优先EDF
+ * 任务的绝对截止时间越早，其优先级越高，优先级最高的任务最先被调度（动态优先级）。
+ * 如果两个任务的优先级一样，当调度它们时，EDF算法将随机选择一个调度。
+ */
 void schedule(int yield) {
 	static int count = 0; // remaining time slices of current env，进程剩余的时间片
 	struct Env *e = curenv; // 当前运行的进程
@@ -51,3 +56,59 @@ void schedule(int yield) {
 	count--;
 	env_run(e);
 }
+
+/*多用户调度算法，每次都会运行已经使用过的时间片最少的用户的进程（相同时取id小者）*/
+// void schedule(int yield) {
+// 	static int count = 0; // remaining time slices of current env
+// 	struct Env *e = curenv;
+// 	static int user_time[5];
+// 	static int able[5];   // 额外声明了一个数组，当列表中存在该用户进程块时就置 1 ，否则保持 0
+// 	for (int i = 0; i < 5; i++) { // 数组初始化
+// 	  able[i] = 0;
+// 	}
+  
+// 	if (yield != 0  count == 0  e == NULL  e->env_status != ENV_RUNNABLE) {
+// 	  if (e != NULL) {
+// 		TAILQ_REMOVE(&env_sched_list, e, env_sched_link);
+// 	  }
+// 	  if (e != NULL && e->env_status == ENV_RUNNABLE) {
+// 		TAILQ_INSERT_TAIL(&env_sched_list, e, env_sched_link);
+// 		// 记得 + env_pri，有笨比上来直接丢了这一句，根本调度不起来
+// 		user_time[e->env_user] += e->env_pri;    
+// 	  }
+// 	  if (TAILQ_EMPTY(&env_sched_list)) {
+// 		panic("schedule: no runnable envs");
+// 	  }
+// 	  e = TAILQ_FIRST(&env_sched_list);
+// 	  count = e->env_pri;
+// 	  struct Env *en = NULL;
+		
+// 	  // 使用了 TAILQ_FOREACH 宏进行循环包装，循环查询有哪个用户在队列里，更新 able 数组
+// 	  TAILQ_FOREACH(en, &env_sched_list, env_sched_link) {
+// 		if (able[en->env_user] == 0) {
+// 		  able[en->env_user] = 1;
+// 		}
+// 	  }
+  
+// 	  // 循环查看哪个用户使用的时间片最少（user_time 最小）
+// 	  int user = -1;
+// 	  u_int times = 111111111;
+// 	  for (int j = 0; j < 5; j++) {
+// 		if (user_time[j] < times && able[j] == 1) {
+// 		  user = j;
+// 		  times = user_time[j];
+// 		}
+// 	  }
+  
+// 	  // 再循环调度链表，取出第一个目标用户的进程块，准备调度
+// 	  TAILQ_FOREACH(en, &env_sched_list, env_sched_link) {
+// 		if (en->env_user == user) {
+// 		  e = en;               // 更换调度块
+// 		  count = e->env_pri;   // 重置时间片 count
+// 		  break;
+// 		}
+// 	  }
+// 	}
+// 	count--;
+// 	env_run(e);
+// }

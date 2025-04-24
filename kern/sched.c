@@ -29,16 +29,27 @@ void schedule(int yield) {
 	struct Env *edf_result = NULL;
 	LIST_FOREACH(iter1, &env_edf_sched_list, env_edf_sched_link) {
 		if (clock == iter1->env_period_deadline) {
-			iter1->env_period_deadline++;
+			iter1->env_period_deadline += iter1->env_edf_period;
 			iter1->env_runtime_left = iter1->env_edf_runtime;
 		}
 	}
 	
 	u_int max_deadline = 111111111;
+	u_int min_id = 11111111;
 	LIST_FOREACH(iter2, &env_edf_sched_list, env_edf_sched_link) {
-		if (iter2->env_runtime_left > 0 && iter2->env_period_deadline < max_deadline) {
-			edf_result = iter2;
-			max_deadline = iter2->env_period_deadline;
+		if (iter2->env_runtime_left > 0 && iter2->env_period_deadline <= max_deadline) {
+			if (iter2->env_period_deadline == max_deadline) {
+				if (iter2->env_id < min_id) {
+					edf_result = iter2;
+					max_deadline = iter2->env_period_deadline;
+					min_id = iter2->env_id;
+				} else {
+					continue;
+				}
+			} else {
+				edf_result = iter2;
+				max_deadline = iter2->env_period_deadline;
+			}
 		}
 	}
 
@@ -60,9 +71,9 @@ void schedule(int yield) {
 		e = TAILQ_FIRST(&env_sched_list);
 		count = e->env_pri;
 	}
-	count--;
 	if (LIST_EMPTY(&env_edf_sched_list) || edf_result == NULL) {
 		last_rr = e;
+		count--;
 		env_run(e);
 	} else {
 		env_run(edf_result);

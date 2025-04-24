@@ -53,6 +53,60 @@ static void asid_free(u_int i) {
 	asid_bitmap[index] &= ~(1 << inner);
 }
 
+// // EDF 调度函数
+// void schedule(int yield) {
+//     struct Env *prev_env = curenv; // 保存之前的进程
+
+//     // 1. 处理上一个运行的进程 prev_env
+//     //    注意：这个逻辑需要在调用 schedule 之前，进程状态已经被正确更新
+//     //    （例如，如果进程阻塞，其 status 应该是 ENV_BLOCKED）
+//     if (prev_env != NULL) {
+//         // 从就绪队列移除它 (如果它还在队列里的话 - 但它刚运行完，应该不在)
+//         // 如果它是可运行的 (比如 yield 或 timer 中断但未阻塞)，需要重新插入排序
+//         if (prev_env->env_status == ENV_RUNNABLE) {
+//              // 重要：如果这是周期任务完成了一次执行，
+//              // 在这里或之前需要更新 prev_env->env_deadline 为下一次的截止期
+//              // update_deadline(prev_env); // 假设有这样一个函数
+//              sched_insert_sorted(prev_env);
+//         }
+//         // 如果状态不是 RUNNABLE (如 BLOCKED, DYING), 它就不应该在就绪队列里
+//         // 这里不需要从队列移除，因为它是由 env_run 返回后，在状态改变时处理
+//         // 或者如果状态改变导致需要调度，调用 schedule 前就应该把它移出 runnable list
+//     }
+
+//     // --- EDF核心逻辑 ---
+//     // 2. 检查是否有可运行的进程
+//     if (TAILQ_EMPTY(&env_sched_list)) {
+//         // 没有可运行的进程了
+//         if (prev_env != NULL && prev_env->env_status != ENV_RUNNABLE) {
+//              // 如果之前的进程阻塞/结束了，并且没有其他就绪进程，系统可能需要等待或panic
+//              curenv = NULL; // 没有当前进程了
+//              // 这里可以进入空闲循环或等待中断
+//              // For demonstration, let's panic like before, or choose an idle task
+//              panic("EDF: no runnable envs");
+//              // or: run_idle_task(); return;
+//         } else if (prev_env != NULL && prev_env->env_status == ENV_RUNNABLE) {
+//             // 如果之前的进程仍可运行但队列空了？这不应该发生，因为它刚被重新插入
+//             panic("EDF: schedule logic error");
+//         } else {
+//             // 初始状态或所有进程都结束/阻塞
+//              panic("EDF: no runnable envs and no previous env");
+//         }
+//     }
+
+//     // 3. 选择截止期最早的进程 (由于列表已排序，就是第一个)
+//     struct Env *next_env = TAILQ_FIRST(&env_sched_list);
+
+//     // 4. 将选中的进程从就绪队列移除，准备运行
+//     TAILQ_REMOVE(&env_sched_list, next_env, env_sched_link);
+
+//     // 5. 更新当前运行进程指针并运行
+//     curenv = next_env;
+//     env_run(curenv); // env_run 不会返回，它会切换上下文运行 curenv
+//                      // 当 curenv 阻塞/yield/完成时，控制权会回到内核某处，
+//                      // 并最终再次调用 schedule
+// }
+
 /* Overview:
  *   Map [va, va+size) of virtual address space to physical [pa, pa+size) in the 'pgdir'. Use
  *   permission bits 'perm | PTE_V' for the entries.

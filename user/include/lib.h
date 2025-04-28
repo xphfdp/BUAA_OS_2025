@@ -8,8 +8,8 @@
 #include <syscall.h>
 #include <trap.h>
 
-#define vpt ((const volatile Pte *)UVPT)
-#define vpd ((const volatile Pde *)(UVPT + (PDX(UVPT) << PGSHIFT)))
+#define vpt ((const volatile Pte *)UVPT) //是一个Pte类型的数组，可以获取所有页表项
+#define vpd ((const volatile Pde *)(UVPT + (PDX(UVPT) << PGSHIFT))) //是一个Pde类型的数组，可以获得所有页目录项
 #define envs ((const volatile struct Env *)UENVS)
 #define pages ((const volatile struct Page *)UPAGES)
 

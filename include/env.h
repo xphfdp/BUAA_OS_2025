@@ -35,14 +35,14 @@ struct Env {
 	u_int env_pri;			 // schedule priority，表示该进程的优先级，在MOS中表示该进程运行的时间片长度
 
 	// Lab 4 IPC
-	u_int env_ipc_value;   // the value sent to us
-	u_int env_ipc_from;    // envid of the sender
-	u_int env_ipc_recving; // whether this env is blocked receiving
-	u_int env_ipc_dstva;   // va at which the received page should be mapped
-	u_int env_ipc_perm;    // perm in which the received page should be mapped
+	u_int env_ipc_value;   // the value sent to us，发送传递的具体数值
+	u_int env_ipc_from;    // envid of the sender，发送方的进程id
+	u_int env_ipc_recving; // whether this env is blocked receiving，该进程是否可以接受数据，为1则等待接收数据中，反之不可接受数据
+	u_int env_ipc_dstva;   // va at which the received page should be mapped，接收到的页面需要与自身的哪个虚拟页面完成映射
+	u_int env_ipc_perm;    // perm in which the received page should be mapped，传递的页面的权限位设置
 
 	// Lab 4 fault handling
-	u_int env_user_tlb_mod_entry; // userspace TLB Mod handler
+	u_int env_user_tlb_mod_entry; // userspace TLB Mod handler，处理写入PTE_D无效的页面时的异常
 
 	// Lab 6 scheduler counts
 	u_int env_runs; // number of times we've been env_run'ed

@@ -60,10 +60,10 @@
 #define PTE_C_UNCACHEABLE (0x0010 << PTE_HARDFLAG_SHIFT)
 
 // Copy On Write. Reserved for software, used by fork.
-#define PTE_COW 0x0001
+#define PTE_COW 0x0001 // 写时复制页面，为1则该页要进行写时复制
 
 // Shared memmory. Reserved for software, used by fork.
-#define PTE_LIBRARY 0x0002
+#define PTE_LIBRARY 0x0002 // 共享页面，进程之间共享该页面，修改相互可见
 
 // Memory segments (32-bit kernel mode addresses)
 #define KUSEG 0x00000000U

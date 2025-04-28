@@ -3,6 +3,7 @@
 
 #ifndef __ASSEMBLER__
 
+// 系统调用号
 enum {
 	SYS_putchar,
 	SYS_print_cons,

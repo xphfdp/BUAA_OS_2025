@@ -25,8 +25,8 @@ exc_gen_entry:
 	mtc0    t0, CP0_STATUS
 /* Exercise 3.9: Your code here. */
 	/*取得Cause寄存器中的2~6位，也就是对应的异常码，这是区别不同异常的重要标志*/
-	/*以得到的异常码作为索引在exception_handlers数组中找到对应的中断处理函数*/
-	/*跳转到对应的中断处理函数中，从而响应了异常，并将异常交给了对应的异常处理函数去处理*/
+	/*以得到的异常码作为索引在exception_handlers数组中找到对应的异常处理函数*/
+	/*跳转到对应的异常处理函数中，从而响应了异常，并将异常交给了对应的异常处理函数去处理*/
 	mfc0	t0, CP0_CAUSE
 	andi	t0, 0x7c
 	lw		t0, exception_handlers(t0)

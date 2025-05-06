@@ -8,10 +8,10 @@
 #include <syscall.h>
 #include <trap.h>
 
-#define vpt ((const volatile Pte *)UVPT) //是一个Pte类型的数组，可以获取所有页表项
-#define vpd ((const volatile Pde *)(UVPT + (PDX(UVPT) << PGSHIFT))) //是一个Pde类型的数组，可以获得所有页目录项
-#define envs ((const volatile struct Env *)UENVS)
-#define pages ((const volatile struct Page *)UPAGES)
+#define vpt ((const volatile Pte *)UVPT) //是一个Pte类型的数组，是页表的首地址，加上偏移量可以获取所有页表项
+#define vpd ((const volatile Pde *)(UVPT + (PDX(UVPT) << PGSHIFT))) //是一个Pde类型的数组，是页表项的首地址，加上偏移量可以获得所有页目录项
+#define envs ((const volatile struct Env *)UENVS) // 由内核地址空间映射到用户地址空间的envs，二者表示同一物理地址下的相同数据，但是本质不同，用户态的进程无法访问内核态下的envs
+#define pages ((const volatile struct Page *)UPAGES) // 与上面的envs同理
 
 // libos
 void exit(void) __attribute__((noreturn));

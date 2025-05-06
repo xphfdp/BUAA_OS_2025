@@ -59,6 +59,7 @@ u_int sys_getenvid(void) {
 void __attribute__((noreturn)) sys_yield(void) {
 	// Hint: Just use 'schedule' with 'yield' set.
 	/* Exercise 4.7: Your code here. */
+	/*yield = 1则表明要放弃当前进程从而调度其他进程*/
 	schedule(1);
 }
 
@@ -266,6 +267,7 @@ int sys_exofork(void) {
 
 	/* Step 3: Set the new env's 'env_tf.regs[2]' to 0 to indicate the return value in child. */
 	/* Exercise 4.9: Your code here. (3/4) */
+	// 将子进程的返回值设为0
 	e->env_tf.regs[2] = 0;
 
 	/* Step 4: Set up the new env's 'env_status' and 'env_pri'.  */
@@ -273,7 +275,7 @@ int sys_exofork(void) {
 	e->env_status = ENV_NOT_RUNNABLE;
 	e->env_pri = curenv->env_pri;
 
-	return e->env_id;
+	return e->env_id; // 父进程的返回值为子进程的envid
 }
 
 /* Overview:
@@ -378,11 +380,13 @@ int sys_ipc_recv(u_int dstva) {
 
 	/* Step 3: Set the value of 'curenv->env_ipc_dstva'. */
 	/* Exercise 4.8: Your code here. (2/8) */
+	// 表明该进程要将接收到的页面与stva完成映射
 	curenv->env_ipc_dstva = dstva;
 
 	/* Step 4: Set the status of 'curenv' to 'ENV_NOT_RUNNABLE' and remove it from
 	 * 'env_sched_list'. */
 	/* Exercise 4.8: Your code here. (3/8) */
+	// 阻塞当前进程，踢出调度队列
 	curenv->env_status = ENV_NOT_RUNNABLE;
 	TAILQ_REMOVE(&env_sched_list, curenv, env_sched_link);
 
@@ -549,14 +553,14 @@ void *syscall_table[MAX_SYSNO] = {
  * stack.
  *
  * Hint:
- *   Use sysno from $a0 to dispatch the syscall.
+ *   Use sysno from $a0 to dispatch the syscall.系统调用号存储在$a0中，用以确定特定调用函数
  *   The possible arguments are stored at $a1, $a2, $a3, [$sp + 16 bytes], [$sp + 20 bytes] in
- *   order.
- *   Number of arguments cannot exceed 5.
+ *   order.其余5个参数分别位于$a1,$a2,$a3,$sp+16,$sp+20中
+ *   Number of arguments cannot exceed 5.除了系统调用号，被调用的函数参数个数不超过5
  */
 void do_syscall(struct Trapframe *tf) {
 	int (*func)(u_int, u_int, u_int, u_int, u_int);
-	int sysno = tf->regs[4];
+	int sysno = tf->regs[4]; //获取系统调用号
 	if (sysno < 0 || sysno >= MAX_SYSNO) {
 		tf->regs[2] = -E_NO_SYS;
 		return;
@@ -564,14 +568,14 @@ void do_syscall(struct Trapframe *tf) {
 
 	/* Step 1: Add the EPC in 'tf' by a word (size of an instruction). */
 	/* Exercise 4.2: Your code here. (1/4) */
-	tf->cp0_epc += 4;
+	tf->cp0_epc += 4;//epc指向syscall的下一条指令，防止从syscall返回后仍然执行syscall而陷入循环
 
 	/* Step 2: Use 'sysno' to get 'func' from 'syscall_table'. */
 	/* Exercise 4.2: Your code here. (2/4) */
-	func = syscall_table[sysno];
+	func = syscall_table[sysno]; // 根据系统调用号获取对应的调用函数
 
 	/* Step 3: First 3 args are stored in $a1, $a2, $a3. */
-	u_int arg1 = tf->regs[5];
+	u_int arg1 = tf->regs[5]; 
 	u_int arg2 = tf->regs[6];
 	u_int arg3 = tf->regs[7];
 
@@ -583,5 +587,5 @@ void do_syscall(struct Trapframe *tf) {
 	/* Step 5: Invoke 'func' with retrieved arguments and store its return value to $v0 in 'tf'.
 	 */
 	/* Exercise 4.2: Your code here. (4/4) */
-	tf->regs[2] = func(arg1, arg2, arg3, arg4, arg5);
+	tf->regs[2] = func(arg1, arg2, arg3, arg4, arg5); // 调用该系统调用函数，将返回值保存在$v0中
 }

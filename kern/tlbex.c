@@ -93,8 +93,8 @@ void do_tlb_mod(struct Trapframe *tf) {
 		tf->regs[29] -= sizeof(tf->regs[4]);
 		// Hint: Set 'cp0_epc' in the context 'tf' to 'curenv->env_user_tlb_mod_entry'.
 		/* Exercise 4.11: Your code here. */
+		// 将epc设置为用户态处理页写入异常函数的地址处，当恢复现场时就可以跳转到处理函数处进行处理
 		tf->cp0_epc = curenv->env_user_tlb_mod_entry;
-
 	} else {
 		panic("TLB Mod but no user handler registered");
 	}

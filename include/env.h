@@ -8,7 +8,7 @@
 
 #define LOG2NENV 10
 #define NENV (1 << LOG2NENV) //进程的最大数量(1024)
-#define ENVX(envid) ((envid) & (NENV - 1))
+#define ENVX(envid) ((envid) & (NENV - 1)) // 根据envid获取envs下标
 
 // All possible values of 'env_status' in 'struct Env'，表示进程的状态.
 #define ENV_FREE 0

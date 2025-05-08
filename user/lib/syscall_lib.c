@@ -4,6 +4,22 @@
 #include <syscall.h>
 #include <trap.h>
 
+int syscall_shm_new(u_int npage) {
+	// (1/8)
+}
+
+int syscall_shm_bind(int key, u_int va, u_int perm) {
+	// (2/8)
+}
+
+int syscall_shm_unbind(int key, u_int va) {
+	// (3/8)
+}
+
+int syscall_shm_free(int key) {
+	// (4/8)
+}
+
 void syscall_putchar(int ch) {
 	msyscall(SYS_putchar, ch);
 }

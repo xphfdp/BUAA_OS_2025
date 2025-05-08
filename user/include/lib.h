@@ -46,6 +46,11 @@ int fork(void);
 /// syscalls
 extern int msyscall(int, ...);
 
+int syscall_shm_new(u_int npage);
+int syscall_shm_bind(int key, u_int va, u_int perm);
+int syscall_shm_unbind(int key, u_int va);
+int syscall_shm_free(int key);
+
 void syscall_putchar(int ch);
 int syscall_print_cons(const void *str, u_int num);
 u_int syscall_getenvid(void);
@@ -118,6 +123,12 @@ int read_map(int fd, u_int offset, void **blk);
 int remove(const char *path);
 int ftruncate(int fd, u_int size);
 int sync(void);
+
+// shm.c
+int shm_new(u_int npage);
+int shm_bind(u_int key, void *va);
+int shm_unbind(u_int key, void *va);
+int shm_free(u_int key);
 
 #define user_assert(x)                                                                             \
 	do {                                                                                       \

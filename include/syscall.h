@@ -5,6 +5,10 @@
 
 // 系统调用号
 enum {
+	SYS_shm_new,
+	SYS_shm_bind,
+	SYS_shm_unbind,
+	SYS_shm_free,
 	SYS_putchar,
 	SYS_print_cons,
 	SYS_getenvid,

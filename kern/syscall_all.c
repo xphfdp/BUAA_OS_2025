@@ -5,8 +5,44 @@
 #include <printk.h>
 #include <sched.h>
 #include <syscall.h>
+#include <shm.h>
 
 extern struct Env *curenv;
+
+struct Shm shm_pool[N_SHM];
+
+int sys_shm_new(u_int npage) {
+	if (npage == 0 || npage > N_SHM_PAGE) {
+		return -E_SHM_INVALID;
+	}
+	// (5/8)
+	page_alloc()
+	return ;
+}
+
+int sys_shm_bind(int key, u_int va, u_int perm) {
+	if (key < 0 || key >= N_SHM) {
+		return -E_SHM_INVALID;
+	}
+	// (6/8)
+	return ;
+}
+
+int sys_shm_unbind(int key, u_int va) {
+	if (key < 0 || key >= N_SHM) {
+		return -E_SHM_INVALID;
+	}
+	// (7/8)
+	return ;
+}
+
+int sys_shm_free(int key) {
+	if (key < 0 || key >= N_SHM) {
+		return -E_SHM_INVALID;
+	}
+	// (8/8)
+	return ;
+}
 
 /* Overview:
  * 	This function is used to print a character on screen.
@@ -581,6 +617,10 @@ int sys_read_dev(u_int va, u_int pa, u_int len) {
 
 void *syscall_table[MAX_SYSNO] = {
     [SYS_putchar] = sys_putchar,
+    [SYS_shm_new] = sys_shm_new,
+    [SYS_shm_bind] = sys_shm_bind,
+    [SYS_shm_unbind] = sys_shm_unbind,
+    [SYS_shm_free] = sys_shm_free,
     [SYS_print_cons] = sys_print_cons,
     [SYS_getenvid] = sys_getenvid,
     [SYS_yield] = sys_yield,

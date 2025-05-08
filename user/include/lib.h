@@ -46,6 +46,7 @@ int fork(void);
 /// syscalls
 extern int msyscall(int, ...);
 
+int syscall_get_parent_envid(void);
 void syscall_putchar(int ch);
 int syscall_print_cons(const void *str, u_int num);
 u_int syscall_getenvid(void);

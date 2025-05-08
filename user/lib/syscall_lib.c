@@ -12,6 +12,10 @@ int syscall_print_cons(const void *str, u_int num) {
 	return msyscall(SYS_print_cons, str, num);
 }
 
+int syscall_get_parent_envid(void) {
+	return msyscall(SYS_get_ppid);
+}
+
 u_int syscall_getenvid(void) {
 	return msyscall(SYS_getenvid);
 }

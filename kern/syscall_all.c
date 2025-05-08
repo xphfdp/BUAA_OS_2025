@@ -8,6 +8,10 @@
 
 extern struct Env *curenv;
 
+int sys_get_ppid(void) {
+	return curenv->env_parent_id;
+}
+
 /* Overview:
  * 	This function is used to print a character on screen.
  *
@@ -595,6 +599,7 @@ void *syscall_table[MAX_SYSNO] = {
     [SYS_panic] = sys_panic,
     [SYS_ipc_try_send] = sys_ipc_try_send,
     [SYS_ipc_recv] = sys_ipc_recv,
+    [SYS_get_ppid] = sys_get_ppid,
     [SYS_cgetc] = sys_cgetc,
     [SYS_write_dev] = sys_write_dev,
     [SYS_read_dev] = sys_read_dev,

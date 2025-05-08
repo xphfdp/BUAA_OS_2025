@@ -16,8 +16,29 @@ int sys_shm_new(u_int npage) {
 		return -E_SHM_INVALID;
 	}
 	// (5/8)
-	page_alloc()
-	return ;
+	struct Shm *min_shm = NULL;
+	int result = 0;
+	for (int i = 0; i < N_SHM; i++) {
+		if (shm_pool[i].open == 0) {
+			min_shm = &shm_pool[i];
+			result = i;
+			break;
+		}
+	}
+	if (min_shm == NULL) {
+		return -E_SHM_INVALID;
+	}
+	for (int i = 0; i < npage; i++) {
+		struct Page *pp = NULL;
+		if (page_alloc(&pp) != 0) {
+			return -E_NO_MEM;
+		}
+		min_shm->pages[i] = pp;
+	}
+	for (int i = 0; i < npage; i++) {
+		min_shm->pages[i]->pp_ref++;
+	}
+	return result;
 }
 
 int sys_shm_bind(int key, u_int va, u_int perm) {
@@ -25,7 +46,16 @@ int sys_shm_bind(int key, u_int va, u_int perm) {
 		return -E_SHM_INVALID;
 	}
 	// (6/8)
-	return ;
+	struct Shm *shm = &shm_pool[key];
+	if (shm->open == 0) {
+		return -E_SHM_NOT_OPEN; 
+	}
+	for (int i = 0; i < shm->npage; i++) {
+		for (u_int j = va; j <= va + shm->npage*PAGE_SIZE;j+=PAGE_SIZE) {
+			page_insert(0,0,shm->pages[i],j,perm);
+		}
+	}
+	return 0;
 }
 
 int sys_shm_unbind(int key, u_int va) {
@@ -33,7 +63,14 @@ int sys_shm_unbind(int key, u_int va) {
 		return -E_SHM_INVALID;
 	}
 	// (7/8)
-	return ;
+	struct Shm *shm = &shm_pool[key];
+	if (shm->open == 0) {
+		return -E_SHM_NOT_OPEN;
+	}
+	for (u_int i = va; i<= va + shm->npage*PAGE_SIZE;i+=PAGE_SIZE) {
+		page_remove(0,0,i);
+	}
+	return 0;
 }
 
 int sys_shm_free(int key) {
@@ -41,7 +78,15 @@ int sys_shm_free(int key) {
 		return -E_SHM_INVALID;
 	}
 	// (8/8)
-	return ;
+	struct Shm *shm = &shm_pool[key];
+	if (shm->open == 0) {
+		return -E_SHM_NOT_OPEN;
+	}
+	shm->open = 0;
+	for (int i = 0;i<shm->npage;i++) {
+		page_decref(shm->pages[i]);
+	}
+	return 0;
 }
 
 /* Overview:

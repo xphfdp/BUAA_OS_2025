@@ -6,18 +6,22 @@
 
 int syscall_shm_new(u_int npage) {
 	// (1/8)
+	return msyscall(SYS_shm_new, npage);
 }
 
 int syscall_shm_bind(int key, u_int va, u_int perm) {
 	// (2/8)
+	return msyscall(SYS_shm_bind, key, va, perm);
 }
 
 int syscall_shm_unbind(int key, u_int va) {
 	// (3/8)
+	return msyscall(SYS_shm_unbind, key, va);
 }
 
 int syscall_shm_free(int key) {
 	// (4/8)
+	return msyscall(SYS_shm_free, key);
 }
 
 void syscall_putchar(int ch) {

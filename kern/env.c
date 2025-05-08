@@ -92,7 +92,7 @@ static void map_segment(Pde *pgdir, u_int asid, u_long pa, u_long va, u_int size
  * Post-Condition:
  *  return e's envid on success
  */
-// 为每一个进程创建一个独一无二的id
+/* 为每一个进程创建一个独一无二的id，低10位为进程控制块的索引*/
 u_int mkenvid(struct Env *e) {
 	static u_int i = 0;
 	return ((++i) << (1 + LOG2NENV)) | (e - envs);

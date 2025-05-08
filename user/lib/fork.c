@@ -21,6 +21,7 @@ static void __attribute__((noreturn)) cow_entry(struct Trapframe *tf) {
 	/* Hint: Use 'vpt' and 'VPN' to find the page table entry. If the 'perm' doesn't have
 	 * 'PTE_COW', launch a 'user_panic'. */
 	/* Exercise 4.13: Your code here. (1/6) */
+	/*获取当前进程的页表项权限位*/
 	perm = vpt[VPN(va)] & 0xfff;
 	if (!(perm & PTE_COW)) {
 		user_panic("perm doesn't have PTE_COW.");
@@ -28,15 +29,18 @@ static void __attribute__((noreturn)) cow_entry(struct Trapframe *tf) {
 
 	/* Step 2: Remove 'PTE_COW' from the 'perm', and add 'PTE_D' to it. */
 	/* Exercise 4.13: Your code here. (2/6) */
+	/*修改权限位*/
 	perm = (perm & ~PTE_COW) | PTE_D;
 
 	/* Step 3: Allocate a new page at 'UCOW'. */
 	/* Exercise 4.13: Your code here. (3/6) */
+	/*为当前进程申请新的物理页*/
 	syscall_mem_alloc(0, (void *)UCOW, perm);
 
 	/* Step 4: Copy the content of the faulting page at 'va' to 'UCOW'. */
 	/* Hint: 'va' may not be aligned to a page! */
 	/* Exercise 4.13: Your code here. (4/6) */
+	/*将发生异常的物理页中的内容复制到新申请的物理页中，同时取消发生异常的物理页的原有映射*/
 	memcpy((void *)UCOW, (void *)ROUNDDOWN(va,PAGE_SIZE), PAGE_SIZE);
 
 	// Step 5: Map the page at 'UCOW' to 'va' with the new 'perm'.
@@ -81,6 +85,7 @@ static void duppage(u_int envid, u_int vpn) {
 	/* Step 1: Get the permission of the page. */
 	/* Hint: Use 'vpt' to find the page table entry. */
 	/* Exercise 4.10: Your code here. (1/2) */
+	/*取得页表项对应的虚拟地址和权限*/
 	addr = vpn << PGSHIFT;
 	perm = vpt[vpn] & 0xfff;
 	/* Step 2: If the page is writable, and not shared with children, and not marked as COW yet,
@@ -114,6 +119,7 @@ int fork(void) {
 	u_int i;
 
 	/* Step 1: Set our TLB Mod user exception entry to 'cow_entry' if not done yet. */
+	// envid = 0可以表示当前进程，为当前进程（父进程）设置页写入异常的处理函数
 	if (env->env_user_tlb_mod_entry != (u_int)cow_entry) {
 		try(syscall_set_tlb_mod_entry(0, cow_entry));
 	}
@@ -131,6 +137,7 @@ int fork(void) {
 	// Hint: You should use 'duppage'.
 	/* Exercise 4.15: Your code here. (1/2) */
 	/*一种写法，一页一页进行写时复制处理*/
+	/*去页目录项的方法：`vpd` 是页目录项数组，`i` 相当于地址的高 20 位，我们需要取得地址的高 10 位作为页目录的索引，因此有 `vpd[i >> 10]`*/
 	for (i = 0;i < VPN(USTACKTOP);i++) {
 		if ((vpd[i >> 10] & PTE_V) && (vpt[i] & PTE_V)) {
 			duppage(child, i);

@@ -506,6 +506,58 @@ int sys_write_dev(u_int va, u_int pa, u_int len) {
 	return 0;
 }
 
+// int sys_ipc_broadcast(u_int val, void *srcva, u_int perm) {
+// 	u_int childs[20];
+// 	for (int i = 0; i < 20; i++) {
+// 	  childs[i] = 0;
+// 	}
+// 	struct Env *e;
+// 	struct Page *p;
+  
+// 	// printk("childs ready!\n");
+  
+// 	if (srcva != 0 && is_illegal_va((u_int)srcva)) {
+// 	  return -E_INVAL;
+// 	}
+	  
+// 	/* Step1: 找到直系的子进程 */
+// 	for (int i = 0; i < NENV; i++) {
+// 	  if (envs[i].env_parent_id == curenv->env_id) {
+// 		for (int j = 0; j < 20; j++) {
+// 		  if (childs[j] == 0) {
+// 			childs[j] = envs[i].env_id;
+// 			break;
+// 		  }
+// 		}
+// 	  }
+// 	}
+  
+// 	/* Step2: 通过 bfs 找到所有子进程的子进程 */
+// 	for (int i = 0; childs[i] != 0; i++) {
+// 	  for (int j = 0; j < NENV; j++) {
+// 		if (envs[j].env_parent_id == childs[i]) {
+// 		  for (int k = 0; k < 20; k++) {
+// 			if (childs[k] == envs[j].env_id) {
+// 			  break;
+// 			}
+// 			if (childs[k] == 0) {
+// 			  childs[k] = envs[j].env_id;
+// 			  break;
+// 			}
+// 		  }
+// 		}
+// 	  }
+// 	}
+	  
+// 	/* Step3: 对所有待发送的进程进行发送 */
+// 	for (int i = 0; childs[i] != 0; i++) {
+// 	  // printk("%d: %x\n", i, childs[i]);
+// 		sys_ipc_try_send(childs[i], val, srcva, perm);
+// 	}
+	  
+// 	return 0;
+//   }
+
 /* Overview:
  *  This function is used to read data from a device physical address.
  *

@@ -18,6 +18,7 @@ int sys_shm_new(u_int npage) {
 	// (5/8)
 	struct Shm *min_shm = NULL;
 	int result = 0;
+	int count = 0;
 	for (int i = 0; i < N_SHM; i++) {
 		if (shm_pool[i].open == 0) {
 			min_shm = &shm_pool[i];
@@ -31,8 +32,12 @@ int sys_shm_new(u_int npage) {
 	for (int i = 0; i < npage; i++) {
 		struct Page *pp = NULL;
 		if (page_alloc(&pp) != 0) {
+			for (int j = 0;j < count;j++) {
+				page_free(min_shm->pages[j]);
+			}
 			return -E_NO_MEM;
 		}
+		count++;
 		min_shm->pages[i] = pp;
 	}
 	for (int i = 0; i < npage; i++) {

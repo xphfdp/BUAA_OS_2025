@@ -27,18 +27,18 @@ struct File {
 	char f_name[MAXNAMELEN]; // filename
 	uint32_t f_size;	 // file size in bytes
 	uint32_t f_type;	 // file type
-	uint32_t f_direct[NDIRECT];
-	uint32_t f_indirect;
+	uint32_t f_direct[NDIRECT]; // 文件的直接指针
+	uint32_t f_indirect; // 文件的间接指针
 
-	struct File *f_dir; // the pointer to the dir where this file is in, valid only in memory.
+	struct File *f_dir; // the pointer to the dir where this file is in, valid only in memory.指向文件所属的目录
 	char f_pad[FILE_STRUCT_SIZE - MAXNAMELEN - (3 + NDIRECT) * 4 - sizeof(void *)];
 } __attribute__((aligned(4), packed));
 
 #define FILE2BLK (BLOCK_SIZE / sizeof(struct File))
 
 // File types
-#define FTYPE_REG 0 // Regular file
-#define FTYPE_DIR 1 // Directory
+#define FTYPE_REG 0 // Regular file 普通文件
+#define FTYPE_DIR 1 // Directory 目录
 
 // File system super-block (both in-memory and on-disk)
 

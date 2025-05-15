@@ -502,61 +502,25 @@ int sys_cgetc(void) {
  */
 int sys_write_dev(u_int va, u_int pa, u_int len) {
 	/* Exercise 5.1: Your code here. (1/2) */
-
-	return 0;
+	if (is_illegal_va_range(va,len)) {
+		return -E_INVAL;
+	}
+	if (!(len == 1 || len == 2 || len == 4)) {
+		return -E_INVAL;
+	}
+	if ((pa >= 0x180003F8 && pa + len < 0x18000418) || (pa >= 0x180001F0 && pa + len < 0x180001F8)) {
+		if (len == 1) {
+			iowrite8(*(u_char *)va, pa);
+		} else if (len == 2) {
+			iowrite16(*(u_short *)va, pa);
+		} else if(len == 4) {
+			iowrite32(*(u_int *)va, pa);
+		}
+		return 0;
+	}
+	
+	return -E_INVAL;
 }
-
-// int sys_ipc_broadcast(u_int val, void *srcva, u_int perm) {
-// 	u_int childs[20];
-// 	for (int i = 0; i < 20; i++) {
-// 	  childs[i] = 0;
-// 	}
-// 	struct Env *e;
-// 	struct Page *p;
-  
-// 	// printk("childs ready!\n");
-  
-// 	if (srcva != 0 && is_illegal_va((u_int)srcva)) {
-// 	  return -E_INVAL;
-// 	}
-	  
-// 	/* Step1: 找到直系的子进程 */
-// 	for (int i = 0; i < NENV; i++) {
-// 	  if (envs[i].env_parent_id == curenv->env_id) {
-// 		for (int j = 0; j < 20; j++) {
-// 		  if (childs[j] == 0) {
-// 			childs[j] = envs[i].env_id;
-// 			break;
-// 		  }
-// 		}
-// 	  }
-// 	}
-  
-// 	/* Step2: 通过 bfs 找到所有子进程的子进程 */
-// 	for (int i = 0; childs[i] != 0; i++) {
-// 	  for (int j = 0; j < NENV; j++) {
-// 		if (envs[j].env_parent_id == childs[i]) {
-// 		  for (int k = 0; k < 20; k++) {
-// 			if (childs[k] == envs[j].env_id) {
-// 			  break;
-// 			}
-// 			if (childs[k] == 0) {
-// 			  childs[k] = envs[j].env_id;
-// 			  break;
-// 			}
-// 		  }
-// 		}
-// 	  }
-// 	}
-	  
-// 	/* Step3: 对所有待发送的进程进行发送 */
-// 	for (int i = 0; childs[i] != 0; i++) {
-// 	  // printk("%d: %x\n", i, childs[i]);
-// 		sys_ipc_try_send(childs[i], val, srcva, perm);
-// 	}
-	  
-// 	return 0;
-//   }
 
 /* Overview:
  *  This function is used to read data from a device physical address.
@@ -575,8 +539,23 @@ int sys_write_dev(u_int va, u_int pa, u_int len) {
  */
 int sys_read_dev(u_int va, u_int pa, u_int len) {
 	/* Exercise 5.1: Your code here. (2/2) */
-
-	return 0;
+	if (is_illegal_va_range(va, len)) {
+		return -E_INVAL;
+	}
+	if (!(len == 1 || len == 2 || len == 4)) {
+		return -E_INVAL;
+	}
+	if ((pa >= 0x180003F8 && pa + len < 0x18000418) || (pa >= 0x180001F0 && pa + len < 0x180001F8)) {
+		if (len == 1) {
+			*(u_char *)va = ioread8(pa);
+		} else if (len == 2) {
+			*(u_short *)va = ioread16(pa);
+		} else if (len == 4) {
+			*(u_int *)va = ioread32(pa);
+		}
+		return 0;
+	}
+	return -E_INVAL;
 }
 
 void *syscall_table[MAX_SYSNO] = {

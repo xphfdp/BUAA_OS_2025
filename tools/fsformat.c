@@ -206,7 +206,7 @@ int make_link_block(struct File *dirf, int nblk) {
 //  Use 'make_link_block' to allocate a new block for the directory if there are no existing unused
 //  'File's.
 struct File *create_file(struct File *dirf) {
-	int nblk = dirf->f_size / BLOCK_SIZE;
+	int nblk = dirf->f_size / BLOCK_SIZE; // 当前文件磁盘块的数量
 
 	// Step 1: Iterate through all existing blocks in the directory.
 	for (int i = 0; i < nblk; ++i) {
@@ -215,6 +215,11 @@ struct File *create_file(struct File *dirf) {
 		// directly from 'f_direct'. Otherwise, access the indirect block on 'disk' and get
 		// the 'bno' at the index.
 		/* Exercise 5.5: Your code here. (1/3) */
+		if (i < NDIRECT) {
+			bno = dirf->f_direct[i];
+		} else {
+			bno = ((uint32_t *)(disk[dirf->f_indirect].data))[i];
+		}
 
 		// Get the directory block using the block number.
 		struct File *blk = (struct File *)(disk[bno].data);
@@ -224,15 +229,16 @@ struct File *create_file(struct File *dirf) {
 			// If the first byte of the file name is null, the 'File' is unused.
 			// Return a pointer to the unused 'File'.
 			/* Exercise 5.5: Your code here. (2/3) */
-
+			if (f->f_name[0] == NULL) {
+				return f;
+			}
 		}
 	}
 
 	// Step 2: If no unused file is found, allocate a new block using 'make_link_block' function
 	// and return a pointer to the new block on 'disk'.
 	/* Exercise 5.5: Your code here. (3/3) */
-
-	return NULL;
+	return (struct FILE *)(disk[make_link_block(dirf, nblk)].data);
 }
 
 // Write file to disk under specified dir.

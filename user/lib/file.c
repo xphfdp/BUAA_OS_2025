@@ -32,15 +32,11 @@ int open(const char *path, int mode) {
 	// Hint: return the error code if failed.
 	struct Fd *fd;
 	/* Exercise 5.9: Your code here. (1/5) */
-	if (fd_alloc(&fd) != 0) {
-		return -E_MAX_OPEN;
-	}
+	try(fd_alloc(&fd));
 
 	// Step 2: Prepare the 'fd' using 'fsipc_open' in fsipc.c.
 	/* Exercise 5.9: Your code here. (2/5) */
-	if (fsipc_open(path, mode, fd) != 0) {
-		return -E_BAD_PATH;
-	}
+	try(fsipc_open(path, mode, fd));
 
 	// Step 3: Set 'va' to the address of the page where the 'fd''s data is cached, using
 	// 'fd2data'. Set 'size' and 'fileid' correctly with the value in 'fd' as a 'Filefd'.

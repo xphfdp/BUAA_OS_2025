@@ -138,15 +138,14 @@ int map_block(u_int blockno) {
 	// Step 1: If the block is already mapped in cache, return 0.
 	// Hint: Use 'block_is_mapped'.
 	/* Exercise 5.7: Your code here. (1/5) */
-	if (block_is_mapped(blockno) != NULL) {
+	if (block_is_mapped(blockno)) {
 		return 0;
 	}
 
 	// Step 2: Alloc a page in permission 'PTE_D' via syscall.
 	// Hint: Use 'disk_addr' for the virtual address.
 	/* Exercise 5.7: Your code here. (2/5) */
-	void *va = disk_addr(blockno);
-	try(syscall_mem_alloc(env->env_id, va, PTE_D));
+	try(syscall_mem_alloc(env->env_id, disk_addr(blockno), PTE_D));
 }
 
 // Overview:
@@ -161,13 +160,13 @@ void unmap_block(u_int blockno) {
 	// first.
 	// Hint: Use 'block_is_free', 'block_is_dirty' to check, and 'write_block' to sync.
 	/* Exercise 5.7: Your code here. (4/5) */
-	if (block_is_free(blockno) && block_is_dirty(blockno)) {
+	if (!block_is_free(blockno) && block_is_dirty(blockno)) {
 		write_block(blockno);
 	}
 
 	// Step 3: Unmap the virtual address via syscall.
 	/* Exercise 5.7: Your code here. (5/5) */
-	try(syscall_mem_unmap(env->env_id, va));
+	try(syscall_mem_unmap(env->env_id, disk_addr(blockno)));
 
 	user_assert(!block_is_mapped(blockno));
 }
@@ -202,7 +201,7 @@ void free_block(u_int blockno) {
 	// Step 2: Set the flag bit of 'blockno' in 'bitmap'.
 	// Hint: Use bit operations to update the bitmap, such as b[n / W] |= 1 << (n % W).
 	/* Exercise 5.4: Your code here. (2/2) */
-	bitmap[blockno / 32] = 1 << (blockno % 32);
+	bitmap[blockno / 32] |= 1 << (blockno % 32);
 }
 
 // Overview:
@@ -519,7 +518,7 @@ int dir_lookup(struct File *dir, char *name, struct File **file) {
 			// field.
 			/* Exercise 5.8: Your code here. (3/3) */
 			if (strcmp(f->f_name, name) == 0) {
-				file = &f;
+				*file = f;
 				f->f_dir = dir;
 				return 0;
 			}

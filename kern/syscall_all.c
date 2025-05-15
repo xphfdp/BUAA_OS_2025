@@ -500,25 +500,34 @@ int sys_cgetc(void) {
  *	|  IDE disk  | 0x180001f0 | 0x8    |
  *	* ---------------------------------*
  */
-int sys_write_dev(u_int va, u_int pa, u_int len) {
+int sys_write_dev(u_int va, u_int pa, u_int len)
+{
 	/* Exercise 5.1: Your code here. (1/2) */
-	if (is_illegal_va_range(va,len)) {
+	if (is_illegal_va_range(va, len))
+	{
 		return -E_INVAL;
 	}
-	if (!(len == 1 || len == 2 || len == 4)) {
+	if (len != 1 && len != 2 && len != 4)
+	{
 		return -E_INVAL;
 	}
-	if ((pa >= 0x180003F8 && pa + len < 0x18000418) || (pa >= 0x180001F0 && pa + len < 0x180001F8)) {
-		if (len == 1) {
+	if ((0x180003f8 <= pa && pa + len <= 0x180003f8 + 0x20) ||
+		(0x180001f0 <= pa && pa + len <= 0x180001f0 + 0x8))
+	{
+		if (len == 1)
+		{
 			iowrite8(*(u_char *)va, pa);
-		} else if (len == 2) {
+		}
+		else if (len == 2)
+		{
 			iowrite16(*(u_short *)va, pa);
-		} else if(len == 4) {
+		}
+		else if (len == 4)
+		{
 			iowrite32(*(u_int *)va, pa);
 		}
 		return 0;
 	}
-	
 	return -E_INVAL;
 }
 
@@ -537,20 +546,30 @@ int sys_write_dev(u_int va, u_int pa, u_int len) {
  *  You can use 'is_illegal_va_range' to validate 'va'.
  *  You can use function 'ioread32', 'ioread16' and 'ioread8' to read data from device.
  */
-int sys_read_dev(u_int va, u_int pa, u_int len) {
+int sys_read_dev(u_int va, u_int pa, u_int len)
+{
 	/* Exercise 5.1: Your code here. (2/2) */
-	if (is_illegal_va_range(va, len)) {
+	if (is_illegal_va_range(va, len))
+	{
 		return -E_INVAL;
 	}
-	if (!(len == 1 || len == 2 || len == 4)) {
+	if (len != 1 && len != 2 && len != 4)
+	{
 		return -E_INVAL;
 	}
-	if ((pa >= 0x180003F8 && pa + len < 0x18000418) || (pa >= 0x180001F0 && pa + len < 0x180001F8)) {
-		if (len == 1) {
+	if ((0x180003f8 <= pa && pa + len <= 0x180003f8 + 0x20) ||
+		(0x180001f0 <= pa && pa + len <= 0x180001f0 + 0x8))
+	{
+		if (len == 1)
+		{
 			*(u_char *)va = ioread8(pa);
-		} else if (len == 2) {
+		}
+		else if (len == 2)
+		{
 			*(u_short *)va = ioread16(pa);
-		} else if (len == 4) {
+		}
+		else if (len == 4)
+		{
 			*(u_int *)va = ioread32(pa);
 		}
 		return 0;

@@ -3,6 +3,8 @@
 
 #define debug 0
 
+// 实现了文件系统的用户接口，为用户程序提供一些列库函数来完成文件的相关操作
+
 static int file_close(struct Fd *fd);
 static int file_read(struct Fd *fd, void *buf, u_int n, u_int offset);
 static int file_write(struct Fd *fd, const void *buf, u_int n, u_int offset);
@@ -25,6 +27,7 @@ struct Dev devfile = {
 // Returns:
 //  the file descriptor on success,
 //  the underlying error on failure.
+// 打开一个文件，具体地，按照mode模式打开path的文件，同时返回文件描述符的id
 int open(const char *path, int mode) {
 	int r;
 
@@ -32,10 +35,13 @@ int open(const char *path, int mode) {
 	// Hint: return the error code if failed.
 	struct Fd *fd;
 	/* Exercise 5.9: Your code here. (1/5) */
+	// 获取新的文件描述符
 	try(fd_alloc(&fd));
 
 	// Step 2: Prepare the 'fd' using 'fsipc_open' in fsipc.c.
 	/* Exercise 5.9: Your code here. (2/5) */
+	// 使用文件服务IPC打开文件
+	// 文件系统服务进程会通过fd设置相关信息
 	try(fsipc_open(path, mode, fd));
 
 	// Step 3: Set 'va' to the address of the page where the 'fd''s data is cached, using
@@ -44,12 +50,16 @@ int open(const char *path, int mode) {
 	struct Filefd *ffd;
 	u_int size, fileid;
 	/* Exercise 5.9: Your code here. (3/5) */
+	// 获取文件内容应该映射到的虚拟地址
 	va = fd2data(fd);
+	// 通过指针类型，改变文件描述符地址处信息的解释方式
 	ffd = (struct Filefd *)fd;
+	// 这些信息之前由文件系统服务进程设置
 	size = ffd->f_file.f_size;
 	fileid = ffd->f_fileid;
 
 	// Step 4: Map the file content using 'fsipc_map'.
+	// 将文件的内容加载到内存中，方式为建立相关的映射关系
 	for (int i = 0; i < size; i += PTMAP) {
 		/* Exercise 5.9: Your code here. (4/5) */
 		try(fsipc_map(fileid, i, va + i));
@@ -57,12 +67,14 @@ int open(const char *path, int mode) {
 
 	// Step 5: Return the number of file descriptor using 'fd2num'.
 	/* Exercise 5.9: Your code here. (5/5) */
+	// 返回文件描述符对应的id
 	return fd2num(fd);
 
 }
 
 // Overview:
 //  Close a file descriptor
+// 关闭文件描述符对应的文件
 int file_close(struct Fd *fd) {
 	int r;
 	struct Filefd *ffd;
@@ -108,6 +120,7 @@ int file_close(struct Fd *fd) {
 //  Read 'n' bytes from 'fd' at the current seek position into 'buf'. Since files
 //  are memory-mapped, this amounts to a memcpy() surrounded by a little red
 //  tape to handle the file size and seek pointer.
+// 从文件的offset处读取n个字节到buf，返回实际读取的字节
 static int file_read(struct Fd *fd, void *buf, u_int n, u_int offset) {
 	u_int size;
 	struct Filefd *f;
@@ -131,6 +144,7 @@ static int file_read(struct Fd *fd, void *buf, u_int n, u_int offset) {
 // Overview:
 //  Find the virtual address of the page that maps the file block
 //  starting at 'offset'.
+// 获取fdnum对应文件的offset处的地址
 int read_map(int fdnum, u_int offset, void **blk) {
 	int r;
 	void *va;
@@ -160,6 +174,7 @@ int read_map(int fdnum, u_int offset, void **blk) {
 
 // Overview:
 //  Write 'n' bytes from 'buf' to 'fd' at the current seek position.
+// 将buffer中n个字节写入到文件的offset处
 static int file_write(struct Fd *fd, const void *buf, u_int n, u_int offset) {
 	int r;
 	u_int tot;
@@ -198,6 +213,7 @@ static int file_stat(struct Fd *fd, struct Stat *st) {
 
 // Overview:
 //  Truncate or extend an open file to 'size' bytes
+// 将文件的大小设置为size，方式可以是缩减也可以是扩大
 int ftruncate(int fdnum, u_int size) {
 	int i, r;
 	struct Fd *fd;
@@ -250,6 +266,7 @@ int ftruncate(int fdnum, u_int size) {
 
 // Overview:
 //  Delete a file or directory.
+// 按路径删除文件
 int remove(const char *path) {
 	// Call fsipc_remove.
 
@@ -259,6 +276,7 @@ int remove(const char *path) {
 
 // Overview:
 //  Synchronize disk with buffer cache
+// 将文件系统的文件写回磁盘
 int sync(void) {
 	return fsipc_sync();
 }

@@ -108,6 +108,9 @@ int sys_set_tlb_mod_entry(u_int envid, u_int func) {
 /* Overview:
  *   Check 'va' is illegal or not, according to include/mmu.h
  */
+// 判断是否为正常用户空间虚拟地址，非法则为真
+// inline表示这是内联函数，不会修改栈帧
+// 内联函数指的是这个函数不会被编译为一个函数，而是直接内联展开在调用者函数内
 static inline int is_illegal_va(u_long va) {
 	return va < UTEMP || va >= UTOP;
 }
@@ -500,20 +503,28 @@ int sys_cgetc(void) {
  *	|  IDE disk  | 0x180001f0 | 0x8    |
  *	* ---------------------------------*
  */
+// 通过系统调用实现向设备写入数据
+// 从虚拟地址va处读取长度为len的数据，写入到对应的pa中
+// va指的是data_addr，pa指的是device_addr
+// device_addr(pa)位于kseg1，不需要经过cache，也不经过MMU映射，由硬件直接完成地址转换
 int sys_write_dev(u_int va, u_int pa, u_int len)
 {
 	/* Exercise 5.1: Your code here. (1/2) */
+	// 判断数据所在虚拟地址是否合法
 	if (is_illegal_va_range(va, len))
 	{
 		return -E_INVAL;
 	}
+	// 数据长度必须为1个字节或者2个字节或者4个字节
 	if (len != 1 && len != 2 && len != 4)
 	{
 		return -E_INVAL;
 	}
+	// 检查设备物理地址的合法性和有效性，不能越界
 	if ((0x180003f8 <= pa && pa + len <= 0x180003f8 + 0x20) ||
 		(0x180001f0 <= pa && pa + len <= 0x180001f0 + 0x8))
 	{
+		// 根据数据长度来向设备写入相应的字节
 		if (len == 1)
 		{
 			iowrite8(*(u_char *)va, pa);
@@ -546,20 +557,26 @@ int sys_write_dev(u_int va, u_int pa, u_int len)
  *  You can use 'is_illegal_va_range' to validate 'va'.
  *  You can use function 'ioread32', 'ioread16' and 'ioread8' to read data from device.
  */
+// 通过系统调用从设备读入数据
+// va、pa和len定义同sys_write_dev函数
 int sys_read_dev(u_int va, u_int pa, u_int len)
 {
 	/* Exercise 5.1: Your code here. (2/2) */
+	// 判断数据所在地址是否合法
 	if (is_illegal_va_range(va, len))
 	{
 		return -E_INVAL;
 	}
+	// 要读入的数据长度必须为1个字节或者2个字节或者4个字节
 	if (len != 1 && len != 2 && len != 4)
 	{
 		return -E_INVAL;
 	}
+	// 判断设备物理地址的合法性和有效性
 	if ((0x180003f8 <= pa && pa + len <= 0x180003f8 + 0x20) ||
 		(0x180001f0 <= pa && pa + len <= 0x180001f0 + 0x8))
 	{
+		// 根据数据长度从设备读取相应的字节数
 		if (len == 1)
 		{
 			*(u_char *)va = ioread8(pa);
@@ -577,6 +594,7 @@ int sys_read_dev(u_int va, u_int pa, u_int len)
 	return -E_INVAL;
 }
 
+// 系统调用号
 void *syscall_table[MAX_SYSNO] = {
     [SYS_putchar] = sys_putchar,
     [SYS_print_cons] = sys_print_cons,

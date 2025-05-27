@@ -6,6 +6,8 @@
 
 u_char fsipcbuf[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 
+//本文件实现了与文件系统服务进程之间的交互，详见fs/serv.c
+
 // Overview:
 //  Send an IPC request to the file server, and wait for a reply.
 //

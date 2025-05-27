@@ -3,6 +3,8 @@
  * serves IPC requests from other environments.
  */
 
+// 本文件存有文件系统服务进程的主干函数，通过IPC通信实现了与用户进程user/lib/fsipc.c中通信函数进行交互
+
 #include "serv.h"
 #include <fd.h>
 #include <fsreq.h>

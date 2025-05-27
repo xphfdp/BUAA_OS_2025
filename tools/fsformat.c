@@ -13,6 +13,8 @@
 #define PAGE_SIZE 4096
 #include "../user/include/fs.h"
 
+// 本文件用于创建磁盘镜像
+
 /* Static assert, for compile-time assertion checking */
 #define static_assert(c) (void)(char(*)[(c) ? 1 : -1])0
 
@@ -20,12 +22,17 @@
 typedef struct Super Super;
 typedef struct File File;
 
-#define NBLOCK 1024 // The number of blocks in the disk.
-uint32_t nbitblock; // the number of bitmap blocks.
-uint32_t nextbno;   // next availiable block.
+// 磁盘中磁盘块的数量
+#define NBLOCK 1024
+// 存储位图所需要的磁盘块（位图块）的数量
+uint32_t nbitblock;
+// 下一个可用磁盘块的id
+uint32_t nextbno;
 
-struct Super super; // super block.
+// 本磁盘中的超级块
+struct Super super;
 
+// 磁盘块的类型
 enum {
 	BLOCK_FREE = 0,
 	BLOCK_BOOT = 1,
@@ -36,12 +43,17 @@ enum {
 	BLOCK_INDEX = 6,
 };
 
+// 磁盘块是一个虚拟概念，是OS与磁盘交互的最小单位
+// 将磁盘分为了若干个磁盘块，使用disk数组进行管理
 struct Block {
+	// 磁盘块中存储的数据
 	uint8_t data[BLOCK_SIZE];
+	// 磁盘块的类型
 	uint32_t type;
 } disk[NBLOCK];
 
 // reverse: mutually transform between little endian and big endian.
+// 进行大小尾端转换
 void reverse(uint32_t *p) {
 	uint8_t *x = (uint8_t *)p;
 	uint32_t y = *(uint32_t *)x;
@@ -101,44 +113,49 @@ void reverse_block(struct Block *b) {
 	}
 }
 
-// Initial the disk. Do some work with bitmap and super block.
+// 磁盘初始化，对位图和超级块进行设置，将所有的块都标记为空闲块
 void init_disk() {
 	int i, diff;
 
-	// Step 1: Mark boot sector block.
+	// 将第一个磁盘块设置为主引导扇区，作为引导扇区和分区表使用
 	disk[0].type = BLOCK_BOOT;
 
-	// Step 2: Initialize boundary.
+	// 存储位图所需要的磁盘块数量
 	nbitblock = (NBLOCK + BLOCK_SIZE_BIT - 1) / BLOCK_SIZE_BIT;
+	// 从第三个磁盘块开始设置磁盘的位图（第二个磁盘块是超级块）
 	nextbno = 2 + nbitblock;
 
-	// Step 2: Initialize bitmap blocks.
+	// 设置位图块
 	for (i = 0; i < nbitblock; ++i) {
 		disk[2 + i].type = BLOCK_BMAP;
 	}
+	// 初始化位图，将位图中的每一位都设置为1，表示磁盘块处于空闲状态
 	for (i = 0; i < nbitblock; ++i) {
 		memset(disk[2 + i].data, 0xff, BLOCK_SIZE);
 	}
+	// 如果位图无法完全占满磁盘块，将多余的位设置为0
 	if (NBLOCK != nbitblock * BLOCK_SIZE_BIT) {
 		diff = NBLOCK % BLOCK_SIZE_BIT / 8;
 		memset(disk[2 + (nbitblock - 1)].data + diff, 0x00, BLOCK_SIZE - diff);
 	}
 
-	// Step 3: Initialize super block.
+	// 将第二个磁盘块设置为超级块
 	disk[1].type = BLOCK_SUPER;
+	// 初始化超级块
 	super.s_magic = FS_MAGIC;
 	super.s_nblocks = NBLOCK;
 	super.s_root.f_type = FTYPE_DIR;
 	strcpy(super.s_root.f_name, "/");
 }
 
-// Get next block id, and set `type` to the block's type.
+// 获取下一个可用磁盘块的id
 int next_block(int type) {
 	disk[nextbno].type = type;
 	return nextbno++;
 }
 
 // Flush disk block usage to bitmap.
+// 根据磁盘块的使用情况设置位图
 void flush_bitmap() {
 	int i;
 	// update bitmap, mark all bit where corresponding block is used.
@@ -170,12 +187,16 @@ void finish_fs(char *name) {
 }
 
 // Save block link.
+// 将磁盘块添加到目录下
 void save_block_link(struct File *f, int nblk, int bno) {
+	// 检查文件是否过大
 	assert(nblk < NINDIRECT); // if not, file is too large !
 
+	// 目录下属的文件较少，可以使用直接指针
 	if (nblk < NDIRECT) {
 		f->f_direct[nblk] = bno;
-	} else {
+	} else { // 使用间接指针
+		// 为间接指针分配一个空闲磁盘块，用于存储其他磁盘块
 		if (f->f_indirect == 0) {
 			// create new indirect block.
 			f->f_indirect = next_block(BLOCK_INDEX);
@@ -185,9 +206,13 @@ void save_block_link(struct File *f, int nblk, int bno) {
 }
 
 // Make new block contains link to files in a directory.
+// 获取下一个空闲的磁盘控制块，并添加到对应目录下
 int make_link_block(struct File *dirf, int nblk) {
+	// 获取一个可用的磁盘控制块id
 	int bno = next_block(BLOCK_FILE);
+	// 将磁盘块添加到目录下
 	save_block_link(dirf, nblk, bno);
+	// 增加文件大小，dirf 意为 dictionary_file
 	dirf->f_size += BLOCK_SIZE;
 	return bno;
 }
@@ -205,30 +230,41 @@ int make_link_block(struct File *dirf, int nblk) {
 // Hint:
 //  Use 'make_link_block' to allocate a new block for the directory if there are no existing unused
 //  'File's.
+// 在目录下寻找可用的文件控制块，返回相应的文件控制块指针
 struct File *create_file(struct File *dirf) {
-	int nblk = dirf->f_size / BLOCK_SIZE; // 当前文件磁盘块的数量
+	// dirf 意为 dictionary_file
+	// 目录占据的磁盘块数量
+	int nblk = dirf->f_size / BLOCK_SIZE;
 
-	// Step 1: Iterate through all existing blocks in the directory.
+	// 先检查原有目录中是否有现在不被使用的磁盘控制块
+	// 遍历目录占据的所有磁盘块
 	for (int i = 0; i < nblk; ++i) {
-		int bno; // the block number
+		// 磁盘块号
+		int bno;
 		// If the block number is in the range of direct pointers (NDIRECT), get the 'bno'
 		// directly from 'f_direct'. Otherwise, access the indirect block on 'disk' and get
 		// the 'bno' at the index.
 		/* Exercise 5.5: Your code here. (1/3) */
 		if (i < NDIRECT) {
+			// 如果i在直接指针区域，可以直接获取磁盘块，因为直接指针直接指向磁盘块
 			bno = dirf->f_direct[i];
 		} else {
+			// 否则访问间接指针指向的磁盘块，该磁盘块中存储着许多直接指向磁盘块的指针
+			// 通过存储的指针获取磁盘块
 			bno = ((uint32_t *)(disk[dirf->f_indirect].data))[i];
 		}
 
 		// Get the directory block using the block number.
+		// 获取磁盘块的起始文件控制块
 		struct File *blk = (struct File *)(disk[bno].data);
 
 		// Iterate through all 'File's in the directory block.
+		// 遍历磁盘块存储的文件控制块
 		for (struct File *f = blk; f < blk + FILE2BLK; ++f) {
 			// If the first byte of the file name is null, the 'File' is unused.
 			// Return a pointer to the unused 'File'.
 			/* Exercise 5.5: Your code here. (2/3) */
+			// 文件名为null，代表文件未被使用，返回未被使用的文件控制块
 			if (f->f_name[0] == NULL) {
 				return f;
 			}
@@ -238,12 +274,15 @@ struct File *create_file(struct File *dirf) {
 	// Step 2: If no unused file is found, allocate a new block using 'make_link_block' function
 	// and return a pointer to the new block on 'disk'.
 	/* Exercise 5.5: Your code here. (3/3) */
+	// 如果进行到这一步，说明磁盘中所有的文件控制块都被使用，需要新的磁盘控制块
 	return (struct File *)(disk[make_link_block(dirf, nblk)].data);
 }
 
 // Write file to disk under specified dir.
+// 将文件写入磁盘
 void write_file(struct File *dirf, const char *path) {
 	int iblk = 0, r = 0, n = sizeof(disk[0].data);
+	// 在目录下创建一个文件控制块，已经初始化
 	struct File *target = create_file(dirf);
 
 	/* in case `create_file` is't filled */

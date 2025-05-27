@@ -6,13 +6,20 @@
 
 // Definitions for requests from clients to file system
 
+// 文件操作的类型
 enum {
+	// 打开文件
 	FSREQ_OPEN,
+	// 建立磁盘块映射
 	FSREQ_MAP,
+	// 设置带线啊哦
 	FSREQ_SET_SIZE,
+	// 关闭文件
 	FSREQ_CLOSE,
 	FSREQ_DIRTY,
+	// 删除文件
 	FSREQ_REMOVE,
+	// 同步文件，向磁盘写回被修改过的文件
 	FSREQ_SYNC,
 	MAX_FSREQNO,
 };

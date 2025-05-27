@@ -125,12 +125,18 @@ int sync(void);
 			user_panic("assertion failed: %s", #x);                                    \
 	} while (0)
 
-// File open modes
+// 文件打开的模式
+// 只读模式
 #define O_RDONLY 0x0000	 /* open for reading only */
+// 只写模式
 #define O_WRONLY 0x0001	 /* open for writing only */
+// 读写模式
 #define O_RDWR 0x0002	 /* open for reading and writing */
+// 全模式：用于匹配模式
 #define O_ACCMODE 0x0003 /* mask for above modes */
+// 不存在则创建模式
 #define O_CREAT 0x0100	 /* create if nonexistent */
+// 缩减到0长度
 #define O_TRUNC 0x0200	 /* truncate to zero length */
 
 // Unimplemented open modes

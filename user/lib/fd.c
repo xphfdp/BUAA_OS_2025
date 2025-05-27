@@ -3,19 +3,25 @@
 #include <lib.h>
 #include <mmu.h>
 
+// 实现了文件描述符，允许用户程序使用统一的接口，抽象地操作磁盘文件系统中的文件，以及控制台和管道等虚拟的文件
+
+// 保存了相应的设备
 static struct Dev *devtab[] = {&devfile, &devcons,
 #if !defined(LAB) || LAB >= 6
 			       &devpipe,
 #endif
 			       0};
 
+// 根据设备id查找相应的设备，并将查找到的设备保存在dev指针中，如果没查找到就返回错误				   
 int dev_lookup(int dev_id, struct Dev **dev) {
+	// 遍历设备列表，寻找是否有对应id的设备
 	for (int i = 0; devtab[i]; i++) {
 		if (devtab[i]->dev_id == dev_id) {
 			*dev = devtab[i];
 			return 0;
 		}
 	}
+	// 找不到设备，返回错误
 	*dev = NULL;
 	debugf("[%08x] unknown device type %d\n", env->env_id, dev_id);
 	return -E_INVAL;
@@ -31,11 +37,14 @@ int dev_lookup(int dev_id, struct Dev **dev) {
 //    in a row without allocating the first page we returned, we'll
 //    return the same page at the second time.)
 //   Return 0 on success, or an error code on error.
+// 获取当前可使用的、id最小的文件描述符
 int fd_alloc(struct Fd **fd) {
 	u_int va;
 	u_int fdno;
-
+	//寻找id最小的可用文件描述符
 	for (fdno = 0; fdno < MAXFD - 1; fdno++) {
+		// 获取fdno对应的文件描述符的地址
+		// fd的地址是固定的，主要对地址进行操作，基本没对数据结构进行操作
 		va = INDEX2FD(fdno);
 
 		if ((vpd[va / PDMAP] & PTE_V) == 0) {
@@ -52,6 +61,7 @@ int fd_alloc(struct Fd **fd) {
 	return -E_MAX_OPEN;
 }
 
+// 解除文件描述符的占用，直接取消其地址映射
 void fd_close(struct Fd *fd) {
 	panic_on(syscall_mem_unmap(0, fd));
 }
@@ -62,15 +72,16 @@ void fd_close(struct Fd *fd) {
 // Post-Condition:
 //  Return 0 and set *fd to the pointer to the 'Fd' page on success.
 //  Return -E_INVAL if 'fdnum' is invalid or unmapped.
+// 找到fdnum对应的fd，同时检查fd是否正在被使用，不再使用则报错
 int fd_lookup(int fdnum, struct Fd **fd) {
 	u_int va;
-
+	// 判断fd是否合法
 	if (fdnum >= MAXFD) {
 		return -E_INVAL;
 	}
 
 	va = INDEX2FD(fdnum);
-
+	// 判断fd是否在被使用，通过页表判断
 	if ((vpt[va / PTMAP] & PTE_V) != 0) { // the fd is used
 		*fd = (struct Fd *)va;
 		return 0;
@@ -79,35 +90,41 @@ int fd_lookup(int fdnum, struct Fd **fd) {
 	return -E_INVAL;
 }
 
+// 获取文件描述符对应的，文件应该被映射到的虚拟地址
 void *fd2data(struct Fd *fd) {
 	return (void *)INDEX2DATA(fd2num(fd));
 }
 
+// 获取文件描述符的id
 int fd2num(struct Fd *fd) {
 	return ((u_int)fd - FDTABLE) / PTMAP;
 }
 
+// 根据文件描述符的id获取对应的文件描述符
 int num2fd(int fd) {
 	return fd * PTMAP + FDTABLE;
 }
 
+// 关闭文件，会同时关闭文件描述符的占用
 int close(int fdnum) {
 	int r;
 	struct Dev *dev = NULL;
 	struct Fd *fd;
 
+	// 获取文件描述符和对应的设备
 	if ((r = fd_lookup(fdnum, &fd)) < 0 || (r = dev_lookup(fd->fd_dev_id, &dev)) < 0) {
 		return r;
 	}
-
+	// 关闭文件，同时需要解除占用文件描述符
 	r = (*dev->dev_close)(fd);
 	fd_close(fd);
 	return r;
 }
 
+// 关闭所有文件
 void close_all(void) {
 	int i;
-
+	// 通过遍历实现
 	for (i = 0; i < MAXFD; i++) {
 		close(i);
 	}
@@ -125,6 +142,7 @@ void close_all(void) {
  *   Use 'fd2data' to get the data address to 'fd'.
  *   Use 'syscall_mem_map' to share the data pages.
  */
+// 复制打开文件的内容到新的文件描述符id
 int dup(int oldfdnum, int newfdnum) {
 	int i, r;
 	void *ova, *nva;
@@ -183,6 +201,7 @@ err:
 //  Update seek position.
 //  Return the number of bytes read successfully.
 //  Return < 0 on error.
+// 读文件，从当前文件的读写指针继续读取n个字节到buf中
 int read(int fdnum, void *buf, u_int n) {
 	int r;
 
@@ -191,6 +210,7 @@ int read(int fdnum, void *buf, u_int n) {
 	struct Dev *dev;
 	struct Fd *fd;
 	/* Exercise 5.10: Your code here. (1/4) */
+	// 获得文件描述符和对应的设备
 	if ((r = fd_lookup(fdnum, &fd)) < 0 || (r = dev_lookup(fd->fd_dev_id, &dev)) < 0)
 	{
 		return r;
@@ -199,6 +219,7 @@ int read(int fdnum, void *buf, u_int n) {
 	// Step 2: Check the open mode in 'fd'.
 	// Return -E_INVAL if the file is opened for writing only (O_WRONLY).
 	/* Exercise 5.10: Your code here. (2/4) */
+	// 检查文件读写模式，如果文件只可写，则报错
 	if ((fd->fd_omode & O_ACCMODE) == O_WRONLY)
 	{
 		return -E_INVAL;
@@ -206,6 +227,7 @@ int read(int fdnum, void *buf, u_int n) {
 
 	// Step 3: Read from 'dev' into 'buf' at the seek position (offset in 'fd').
 	/* Exercise 5.10: Your code here. (3/4) */
+	// 从文件的读写指针处继续读n个字节到buf中
 	r = dev->dev_read(fd, buf, n, fd->fd_offset);
 
 	// Step 4: Update the offset in 'fd' if the read is successful.
@@ -213,6 +235,7 @@ int read(int fdnum, void *buf, u_int n) {
 	 *  A character buffer is not a C string. Only the memory within [buf, buf+n) is safe to
 	 *  use. */
 	/* Exercise 5.10: Your code here. (4/4) */
+	// 更新文件的读写指针
 	if (r > 0)
 	{
 		fd->fd_offset += r;
@@ -239,20 +262,23 @@ int readn(int fdnum, void *buf, u_int n) {
 	return tot;
 }
 
+// 写文件
 int write(int fdnum, const void *buf, u_int n) {
 	int r;
 	struct Dev *dev;
 	struct Fd *fd;
 
+	// 查找文件描述符和对应的设备
 	if ((r = fd_lookup(fdnum, &fd)) < 0 || (r = dev_lookup(fd->fd_dev_id, &dev)) < 0) {
 		return r;
 	}
-
+	// 检查文件的读写模式，如果文件只读则报错
 	if ((fd->fd_omode & O_ACCMODE) == O_RDONLY) {
 		return -E_INVAL;
 	}
-
+	// 从文件的读写指针处继续写n个字节
 	r = dev->dev_write(fd, buf, n, fd->fd_offset);
+	// 更新文件的读写指针
 	if (r > 0) {
 		fd->fd_offset += r;
 	}
@@ -260,6 +286,7 @@ int write(int fdnum, const void *buf, u_int n) {
 	return r;
 }
 
+// 找到fdnum文件对应的offset处
 int seek(int fdnum, u_int offset) {
 	int r;
 	struct Fd *fd;

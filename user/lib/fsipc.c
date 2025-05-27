@@ -21,10 +21,17 @@ u_char fsipcbuf[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 // Returns:
 //  0 if successful,
 //  < 0 on failure.
+// 文件服务IPC，向文件系统服务进程发送信息，并接受返回的信息。
 static int fsipc(u_int type, void *fsreq, void *dstva, u_int *perm) {
 	u_int whom;
 	// Our file system server must be the 2nd env.
-	ipc_send(envs[1].env_id, type, fsreq, PTE_D);
+	// 强制像第二个进程发送，即文件系统服务进程，必须使其为第二个进程
+	ipc_send(envs[1].env_id,  // 接受进程的envid，必须为文件系统服务进程
+			type,  // 发送的值：文件操作的类型
+			fsreq, // 共享的数据虚拟地址，设置为请求类型。
+			PTE_D); // 共享区域的权限
+	// 等待从文件系统服务进程接收信息，接收到的页面的权限由文件系统服务进程设置
+	// whom是不必要的，因为一定是第二个进程也就是文件系统服务进程发送的
 	return ipc_recv(&whom, dstva, perm);
 }
 

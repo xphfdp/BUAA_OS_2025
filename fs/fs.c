@@ -53,10 +53,7 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 				for (int i = 0; i < strlen(path);i++) {
 					curpath[i] = path[i];
 				}
-				//if (path[strlen(path)] != '/') {
-				//	curpath[strlen(path)] = '/';
-				//}
-				if (path[strlen(path) - 1] != '/') {
+				if (path[strlen(path)] != '/') {
 					curpath[strlen(curpath) + 1] = '/';
 				}
 				int k = strlen(curpath);

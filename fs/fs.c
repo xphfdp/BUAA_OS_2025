@@ -15,11 +15,11 @@ int find_files(const char *path, const char *name, struct Find_res *res) {
         struct File *file;
         // 用 walk_path 来找到 path 对应的文件夹
         // Lab5-Exam: Your code here. (1/2)
-	try(walk_path(path, 0, &file, 0 ));
+	try(walk_path(path, 0, &file, 0));
 
         // 在 path 对应的文件夹下面遍历，找到所有名字为 name 的文件，你可以调用下面的参考函数 traverse_file
         // Lab5-Exam: Your code here. (2/2)
-	traverse_file(path, file, name, res);
+	try(traverse_file(path, file, name, res));
 }
 
 int traverse_file(const char *path, struct File *file, const char *name, struct Find_res *res) {
@@ -30,15 +30,15 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 	// 1. 检查路径长度是否符合要求，如不符合，直接返回
 	if (strlen(path) == 0 || strlen(path) > MAXPATHLEN) {
 		/*返回*/
-		return -E_BAD_PATH;
+		return 0;
 	}
 
 	// 2. 比较当前文件名是否等于 name，如果相等则更改 res
-	if (file->f_name == name) {
+	if (strcmp(file->f_name, name) == 0) {
 		/*增加 res->count*/
-		res->count++;
 		/*添加 res 的路径*/
 		strcpy(res->file_path[res->count],path);
+		res->count++;
 	}
 	if (file->f_type == FTYPE_DIR) {
 		for (int i = 0; i < nblock; i++) {
@@ -53,11 +53,13 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 				for (int i = 0; i < strlen(path);i++) {
 					curpath[i] = path[i];
 				}
-				int k = strlen(path);
+				curpath[strlen(path)] = '/';
+				int k = strlen(curpath);
 				for (int i = 0;i < strlen(name);i++) {
 					curpath[k] = name[i];
 					k++;
 				}
+				curpath[strlen(curpath)] = '\0';
 				// 4. 递归调用 traverse_file 函数
 				traverse_file(curpath, f, name, res);
 			}

@@ -36,9 +36,9 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 	// 2. 比较当前文件名是否等于 name，如果相等则更改 res
 	if (strcmp(file->f_name, name) == 0) {
 		/*增加 res->count*/
-		/*添加 res 的路径*/
-		strcpy(res->file_path[res->count],path);
 		res->count++;
+		/*添加 res 的路径*/
+		strcpy(res->file_path[res->count - 1],path);
 	}
 	if (file->f_type == FTYPE_DIR) {
 		for (int i = 0; i < nblock; i++) {
@@ -53,7 +53,12 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 				for (int i = 0; i < strlen(path);i++) {
 					curpath[i] = path[i];
 				}
-				curpath[strlen(path)] = '/';
+				//if (path[strlen(path)] != '/') {
+				//	curpath[strlen(path)] = '/';
+				//}
+				if (curpath[strlen(curpath)] != '/') {
+					curpath[strlen(curpath)] = '/';
+				}
 				int k = strlen(curpath);
 				for (int i = 0;i < strlen(name);i++) {
 					curpath[k] = name[i];

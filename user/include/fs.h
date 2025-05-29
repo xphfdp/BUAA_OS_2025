@@ -65,11 +65,11 @@ struct File {
 // 用来描述文件系统的基本信息，如魔数(Magic Number)、磁盘大小以及根目录的位置
 struct Super {
 	// 魔数，用于标识该文件系统
-	uint32_t s_magic;   // Magic number: FS_MAGIC
+	uint32_t s_magic;
 	// 记录本文件系统有多少个磁盘块，本文件系统中为1024
-	uint32_t s_nblocks; // Total number of blocks on disk
+	uint32_t s_nblocks;
 	// 根目录节点，根目录的f_type为FTYPE_DIR，f_name为“/”
-	struct File s_root; // Root directory node
+	struct File s_root;
 };
 
 #endif // _FS_H_

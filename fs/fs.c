@@ -199,7 +199,7 @@ void unmap_block(u_int blockno) {
 //  Return 1 if the block is free, else 0.
 // 根据位图来判断指定的磁盘块是否被占用
 int block_is_free(u_int blockno) {
-	// 判断磁盘块好是否合法
+	// 判断磁盘块号是否合法
 	if (super == 0 || blockno >= super->s_nblocks) {
 		return 0;
 	}

@@ -8,10 +8,16 @@
 #include <syscall.h>
 #include <trap.h>
 
-#define vpt ((const volatile Pte *)UVPT) //是一个Pte类型的数组，是页表的首地址，加上偏移量可以获取所有页表项
-#define vpd ((const volatile Pde *)(UVPT + (PDX(UVPT) << PGSHIFT))) //是一个Pde类型的数组，是页表项的首地址，加上偏移量可以获得所有页目录项
-#define envs ((const volatile struct Env *)UENVS) // 由内核地址空间映射到用户地址空间的envs，二者表示同一物理地址下的相同数据，但是本质不同，用户态的进程无法访问内核态下的envs
-#define pages ((const volatile struct Page *)UPAGES) // 与上面的envs同理
+#define vpt ((const volatile Pte *)UVPT)
+#define vpd ((const volatile Pde *)(UVPT + (PDX(UVPT) << PGSHIFT)))
+#define envs ((const volatile struct Env *)UENVS)
+#define pages ((const volatile struct Page *)UPAGES)
+
+#define MAXPATHNUM ((PAGE_SIZE - sizeof(int)) / MAXPATHLEN)
+struct Find_res {
+	char file_path[MAXPATHNUM][MAXPATHLEN];
+	int count;
+};
 
 // libos
 void exit(void) __attribute__((noreturn));
@@ -118,6 +124,7 @@ int read_map(int fd, u_int offset, void **blk);
 int remove(const char *path);
 int ftruncate(int fd, u_int size);
 int sync(void);
+int find(const char *path, const char *name, struct Find_res *res);
 
 #define user_assert(x)                                                                             \
 	do {                                                                                       \
@@ -125,18 +132,12 @@ int sync(void);
 			user_panic("assertion failed: %s", #x);                                    \
 	} while (0)
 
-// 文件打开的模式
-// 只读模式
+// File open modes
 #define O_RDONLY 0x0000	 /* open for reading only */
-// 只写模式
 #define O_WRONLY 0x0001	 /* open for writing only */
-// 读写模式
 #define O_RDWR 0x0002	 /* open for reading and writing */
-// 全模式：用于匹配模式
 #define O_ACCMODE 0x0003 /* mask for above modes */
-// 不存在则创建模式
 #define O_CREAT 0x0100	 /* create if nonexistent */
-// 缩减到0长度
 #define O_TRUNC 0x0200	 /* truncate to zero length */
 
 // Unimplemented open modes

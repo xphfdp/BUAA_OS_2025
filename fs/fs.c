@@ -28,7 +28,7 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 	nblock = file->f_size / BLOCK_SIZE;
 
 	// 1. 检查路径长度是否符合要求，如不符合，直接返回
-	if (strlen(path) == 0 || strlen(path) > MAXPATHLEN) {
+	if (strlen(path) == 0 || strlen(path) >= MAXPATHLEN) {
 		/*返回*/
 		return 0;
 	}
@@ -47,7 +47,7 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 			struct File *files = (struct File *)blk;
 
 			for (struct File *f = files; f < files + FILE2BLK; ++f) {
-				char curpath[MAXPATHLEN + MAXNAMELEN + 1];
+				char curpath[MAXPATHLEN + MAXNAMELEN + 1] = "";
 				// 3. 把 path 和 name 拼接起来得到下一层文件路径，注意结尾的 '\0'
 				// 提示：我们没有实现 strcat 工具函数，你可以用 strcpy 实现拼接
 				for (int i = 0; i < strlen(path);i++) {
@@ -56,15 +56,14 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 				//if (path[strlen(path)] != '/') {
 				//	curpath[strlen(path)] = '/';
 				//}
-				if (curpath[strlen(curpath)] != '/') {
-					curpath[strlen(curpath)] = '/';
+				if (path[strlen(path) - 1] != '/') {
+					curpath[strlen(curpath) + 1] = '/';
 				}
 				int k = strlen(curpath);
 				for (int i = 0;i < strlen(name);i++) {
 					curpath[k] = name[i];
 					k++;
 				}
-				curpath[strlen(curpath)] = '\0';
 				// 4. 递归调用 traverse_file 函数
 				traverse_file(curpath, f, name, res);
 			}

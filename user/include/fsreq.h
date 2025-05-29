@@ -21,6 +21,7 @@ enum {
 	FSREQ_REMOVE,
 	// 同步文件，向磁盘写回被修改过的文件
 	FSREQ_SYNC,
+	FSREQ_FIND,
 	MAX_FSREQNO,
 };
 
@@ -50,6 +51,11 @@ struct Fsreq_dirty {
 
 struct Fsreq_remove {
 	char req_path[MAXPATHLEN];
+};
+
+struct Fsreq_find {
+    	char req_path[MAXPATHLEN];
+    	char req_name[MAXNAMELEN];
 };
 
 #endif

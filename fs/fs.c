@@ -53,14 +53,15 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 				for (int i = 0; i < strlen(path);i++) {
 					curpath[i] = path[i];
 				}
-				if (path[strlen(path)] != '/') {
-					curpath[strlen(curpath) + 1] = '/';
+				if (path[strlen(path) - 1] != '/') {
+					curpath[strlen(curpath)] = '/';
 				}
 				int k = strlen(curpath);
 				for (int i = 0;i < strlen(name);i++) {
 					curpath[k] = name[i];
 					k++;
 				}
+				curpath[strlen(curpath)] = '\0';
 				// 4. 递归调用 traverse_file 函数
 				traverse_file(curpath, f, name, res);
 			}

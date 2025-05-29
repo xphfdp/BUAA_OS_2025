@@ -47,7 +47,7 @@ int traverse_file(const char *path, struct File *file, const char *name, struct 
 			struct File *files = (struct File *)blk;
 
 			for (struct File *f = files; f < files + FILE2BLK; ++f) {
-				char curpath[MAXPATHLEN + MAXNAMELEN + 1] = "";
+				char curpath[MAXPATHLEN + MAXNAMELEN + 1];
 				// 3. 把 path 和 name 拼接起来得到下一层文件路径，注意结尾的 '\0'
 				// 提示：我们没有实现 strcat 工具函数，你可以用 strcpy 实现拼接
 				for (int i = 0; i < strlen(path);i++) {

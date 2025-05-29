@@ -588,6 +588,7 @@ int dir_lookup(struct File *dir, char *name, struct File **file) {
 // Overview:
 //  Alloc a new File structure under specified directory. Set *file
 //  to point at a free File structure in dir.
+// 在目录下创建文件，把文件保存到指针
 int dir_alloc_file(struct File *dir, struct File **file) {
 	int r;
 	u_int nblock, i, j;

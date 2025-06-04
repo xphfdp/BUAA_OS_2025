@@ -145,7 +145,7 @@ static int pipe_read(struct Fd *fd, void *vbuf, u_int n, u_int offset) {
 	p = (struct Pipe *)fd2data(fd);
 	rbuf = (char *)vbuf;
 	for (i = 0; i < n; i++) {
-		while (p->p_rpos >= p->p_wpos) {
+		while (p->p_rpos == p->p_wpos) {
 			if (i > 0 || _pipe_is_closed(fd, p)) {
 				return i;
 			} else {
@@ -155,7 +155,7 @@ static int pipe_read(struct Fd *fd, void *vbuf, u_int n, u_int offset) {
 		rbuf[i] = p->p_buf[p->p_rpos % PIPE_SIZE];
 		p->p_rpos++;
 	}
-	user_panic("pipe_read not implemented");
+	//user_panic("pipe_read not implemented");
 }
 
 /* Overview:
@@ -186,7 +186,7 @@ static int pipe_write(struct Fd *fd, const void *vbuf, u_int n, u_int offset) {
 	p = (struct Pipe *)fd2data(fd);
 	wbuf = (char *)vbuf;
 	for (i = 0; i < n; i++) {
-		while (p->p_wpos - p->p_rpos >= PIPE_SIZE) {
+		while (p->p_wpos - p->p_rpos == PIPE_SIZE) {
 			if (_pipe_is_closed(fd, p))
 			{
 				return i;
@@ -198,7 +198,7 @@ static int pipe_write(struct Fd *fd, const void *vbuf, u_int n, u_int offset) {
 		p->p_wpos++;
 	}
 
-	user_panic("pipe_write not implemented");
+	//user_panic("pipe_write not implemented");
 
 	return n;
 }

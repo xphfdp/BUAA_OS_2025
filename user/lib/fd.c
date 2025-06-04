@@ -143,14 +143,16 @@ void close_all(void) {
  *   Use 'syscall_mem_map' to share the data pages.
  */
 // 复制打开文件的内容到新的文件描述符id
-int dup(int oldfdnum, int newfdnum) {
+int dup(int oldfdnum, int newfdnum)
+{
 	int i, r;
 	void *ova, *nva;
 	u_int pte;
 	struct Fd *oldfd, *newfd;
 
 	/* Step 1: Check if 'oldnum' is valid. if not, return an error code, or get 'fd'. */
-	if ((r = fd_lookup(oldfdnum, &oldfd)) < 0) {
+	if ((r = fd_lookup(oldfdnum, &oldfd)) < 0)
+	{
 		return r;
 	}
 
@@ -162,23 +164,28 @@ int dup(int oldfdnum, int newfdnum) {
 	ova = fd2data(oldfd);
 	nva = fd2data(newfd);
 	/* Step 5: Dunplicate the data and 'fd' self from old to new. */
-	if ((r = syscall_mem_map(0, oldfd, 0, newfd, vpt[VPN(oldfd)] & (PTE_D | PTE_LIBRARY))) <
-	    0) {
-		goto err;
-	}
-
-	if (vpd[PDX(ova)]) {
-		for (i = 0; i < PDMAP; i += PTMAP) {
+	if (vpd[PDX(ova)])
+	{
+		for (i = 0; i < PDMAP; i += PTMAP)
+		{
 			pte = vpt[VPN(ova + i)];
 
-			if (pte & PTE_V) {
+			if (pte & PTE_V)
+			{
 				// should be no error here -- pd is already allocated
 				if ((r = syscall_mem_map(0, (void *)(ova + i), 0, (void *)(nva + i),
-							 pte & (PTE_D | PTE_LIBRARY))) < 0) {
+										 pte & (PTE_D | PTE_LIBRARY))) < 0)
+				{
 					goto err;
 				}
 			}
 		}
+	}
+
+	if ((r = syscall_mem_map(0, oldfd, 0, newfd, vpt[VPN(oldfd)] & (PTE_D | PTE_LIBRARY))) <
+		0)
+	{
+		goto err;
 	}
 
 	return newfdnum;
@@ -187,7 +194,8 @@ err:
 	/* If error occurs, cancel all map operations. */
 	panic_on(syscall_mem_unmap(0, newfd));
 
-	for (i = 0; i < PDMAP; i += PTMAP) {
+	for (i = 0; i < PDMAP; i += PTMAP)
+	{
 		panic_on(syscall_mem_unmap(0, (void *)(nva + i)));
 	}
 

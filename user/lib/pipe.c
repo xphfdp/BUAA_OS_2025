@@ -92,6 +92,7 @@ err:
  *   Use 'pageref' to get the reference count for
  *   the physical page mapped by the virtual page.
  */
+// 判断管道另外一端是否已经关闭
 static int _pipe_is_closed(struct Fd *fd, struct Pipe *p) {
 	// The 'pageref(p)' is the total number of readers and writers.
 	// The 'pageref(fd)' is the number of envs with 'fd' open

@@ -11,6 +11,7 @@
  * Hint:
  *   Use 'vpd' and 'vpt'.
  */
+// 得到页的引用次数
 int pageref(void *v) {
 	u_int pte;
 

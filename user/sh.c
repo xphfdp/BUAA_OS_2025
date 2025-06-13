@@ -19,50 +19,66 @@
  *   The buffer is modified to turn the spaces after words into zero bytes ('\0'), so that the
  *   returned token is a null-terminated string.
  */
-int _gettoken(char *s, char **p1, char **p2) {
-	*p1 = 0;
-	*p2 = 0;
-	if (s == 0) {
+/*
+* 根据解析到的token性质返回信息
+* - 0：解析到字符串末尾
+* - <：输入重定向
+* - >：输出重定向
+* - |：管道
+* - w：词，可以是指令、文件名、其他所有情况
+*/
+int _gettoken(char *str, char **token_pointer, char **next_token_pointer) {
+	*token_pointer = 0;
+	*next_token_pointer = 0;
+	// 如果是null指针，返回0
+	if (str == 0) {
 		return 0;
 	}
 
-	while (strchr(WHITESPACE, *s)) {
-		*s++ = 0;
+	// 跳过空白符
+	while (strchr(WHITESPACE, *str)) {
+		*str++ = 0;
 	}
-	if (*s == 0) {
+	// 如果来到字符串末尾
+	if (*str == 0) {
 		return 0;
 	}
 
-	if (strchr(SYMBOLS, *s)) {
-		int t = *s;
-		*p1 = s;
-		*s++ = 0;
-		*p2 = s;
+	// 解析到关键字符"<|>&;()"
+	if (strchr(SYMBOLS, *str)) {
+		int t = *str;
+		*token_pointer = str;
+		*str++ = 0;
+		*next_token_pointer = str;
 		return t;
 	}
 
-	*p1 = s;
-	while (*s && !strchr(WHITESPACE SYMBOLS, *s)) {
-		s++;
+	//解析到有意义字符
+	*token_pointer = str;
+	while (*str && !strchr(WHITESPACE SYMBOLS, *str)) {
+		str++;
 	}
-	*p2 = s;
+	*next_token_pointer = str;
 	return 'w';
 }
 
-int gettoken(char *s, char **p1) {
+int gettoken(char *s, char **token_pointer) {
+	// 设为静态变量，保证操作的连续
 	static int c, nc;
-	static char *np1, *np2;
+	static char *token, *next_token;
 
 	if (s) {
-		nc = _gettoken(s, &np1, &np2);
+		nc = _gettoken(s, &token, &next_token);
 		return 0;
 	}
+	// 对于获取上一个token的情况，传入s为0即可
 	c = nc;
-	*p1 = np1;
-	nc = _gettoken(np2, &np1, &np2);
+	*token_pointer = token;
+	nc = _gettoken(next_token, &token, &next_token);
 	return c;
 }
 
+// 最大参数数量
 #define MAXARGS 128
 
 int parsecmd(char **argv, int *rightpipe) {
@@ -74,99 +90,86 @@ int parsecmd(char **argv, int *rightpipe) {
 		switch (c) {
 		case 0:
 			return argc;
+
+		// 一般情况，解析到词
 		case 'w':
+			// 如果参数过多
 			if (argc >= MAXARGS) {
 				debugf("too many arguments\n");
 				exit();
 			}
+			// 填入参数到argv
 			argv[argc++] = t;
 			break;
+
+		// 遇到输入重定向的情况
 		case '<':
 			if (gettoken(0, &t) != 'w') {
 				debugf("syntax error: < not followed by word\n");
 				exit();
 			}
-			// Open 't' for reading, dup it onto fd 0, and then close the original fd.
-			// If the 'open' function encounters an error,
-			// utilize 'debugf' to print relevant messages,
-			// and subsequently terminate the process using 'exit'.
-			/* Exercise 6.5: Your code here. (1/3) */
+			// 打开对应的文件，如果打开失败，则推出
 			if ((fd = open(t, O_RDONLY)) < 0)
 			{
 				debugf("open %s: %d\n", t, fd);
 				exit();
 			}
+			// 进行输入重定向
 			dup(fd, 0);
 			close(fd);
-
-			//user_panic("< redirection not implemented");
-
 			break;
+
+		// 遇到输出重定向的情况
 		case '>':
 			if (gettoken(0, &t) != 'w') {
 				debugf("syntax error: > not followed by word\n");
 				exit();
 			}
-			// Open 't' for writing, create it if not exist and trunc it if exist, dup
-			// it onto fd 1, and then close the original fd.
-			// If the 'open' function encounters an error,
-			// utilize 'debugf' to print relevant messages,
-			// and subsequently terminate the process using 'exit'.
-			/* Exercise 6.5: Your code here. (2/3) */
+			// 打开对应的文件，如果打开失败，则退出
 			if ((fd = open(t, O_WRONLY | O_CREAT | O_TRUNC)) < 0)
 			{
 				debugf("open %s: %d\n", t, fd);
 				exit();
 			}
+			// 进行输出重定向
 			dup(fd, 1);
 			close(fd);
-
-			// user_panic("> redirection not implemented");
-
 			break;
+
+		// 遇到管道的情况
 		case '|':;
-			/*
-			 * First, allocate a pipe.
-			 * Then fork, set '*rightpipe' to the returned child envid or zero.
-			 * The child runs the right side of the pipe:
-			 * - dup the read end of the pipe onto 0
-			 * - close the read end of the pipe
-			 * - close the write end of the pipe
-			 * - and 'return parsecmd(argv, rightpipe)' again, to parse the rest of the
-			 *   command line.
-			 * The parent runs the left side of the pipe:
-			 * - dup the write end of the pipe onto 1
-			 * - close the write end of the pipe
-			 * - close the read end of the pipe
-			 * - and 'return argc', to execute the left of the pipeline.
-			 */
+			// 创建一个管道
 			int p[2];
-			/* Exercise 6.5: Your code here. (3/3) */
 			r = pipe(p);
+			// 管道创建失败则退出
 			if (r != 0) {
 				debugf("pipe: %d\n", r);
 				exit();
 			}
+			// 创建一个进程执行管道操作
 			r = fork();
+			// fork失败则退出
 			if (r < 0) {
 				debugf("fork: %d\n", r);
 				exit();
 			}
 			*rightpipe = r;
+			// 如果是子进程，也就是管道的右边（接收端）
 			if (r == 0) {
+				// 对输入重定向
 				dup(p[0], 0);
 				close(p[0]);
 				close(p[1]);
+				// 执行管道的右边
 				return parsecmd(argv, rightpipe);
 			} else {
+				// 如果是父进程，即管道的左边（发送端）
+				// 对输出重定向
 				dup(p[1], 1);
 				close(p[1]);
 				close(p[0]);
 				return argc;
 			}
-
-			//user_panic("| not implemented");
-
 			break;
 		}
 	}
@@ -174,39 +177,49 @@ int parsecmd(char **argv, int *rightpipe) {
 	return argc;
 }
 
+// 运行指令
 void runcmd(char *s) {
 	gettoken(s, 0);
-
+	// argc为参数列表，形式为字符串
 	char *argv[MAXARGS];
 	int rightpipe = 0;
+	// 解析参数到argv
 	int argc = parsecmd(argv, &rightpipe);
 	if (argc == 0) {
 		return;
 	}
 	argv[argc] = 0;
-
+	// 创建一个进程执行命令
 	int child = spawn(argv[0], argv);
+	// 关闭所有打开的文件
 	close_all();
+	// 如果执行命令的是子进程
 	if (child >= 0) {
 		wait(child);
-	} else {
+	} else { // 如果是父进程
 		debugf("spawn %s: %d\n", argv[0], child);
 	}
+	// 如果有管道，则等待执行完毕
 	if (rightpipe) {
 		wait(rightpipe);
 	}
+	// 退出
 	exit();
 }
 
+// 从标准控制台读入一行命令，保存到buf中
+// n实际上取了buf的大小
 void readline(char *buf, u_int n) {
 	int r;
 	for (int i = 0; i < n; i++) {
+		// 挨个字节读取
 		if ((r = read(0, buf + i, 1)) != 1) {
 			if (r < 0) {
 				debugf("read error: %d\n", r);
 			}
 			exit();
 		}
+		// 如果是退格
 		if (buf[i] == '\b' || buf[i] == 0x7f) {
 			if (i > 0) {
 				i -= 2;
@@ -217,12 +230,15 @@ void readline(char *buf, u_int n) {
 				printf("\b");
 			}
 		}
+		// 如果是换行符，代表命令的结束，停止解析
 		if (buf[i] == '\r' || buf[i] == '\n') {
 			buf[i] = 0;
 			return;
 		}
 	}
+	// 遇到命令过长的情况，不解析当行
 	debugf("line too long\n");
+	// 吃掉剩下的字符，避免缓冲区溢出
 	while ((r = read(0, buf, 1)) == 1 && buf[0] != '\r' && buf[0] != '\n') {
 		;
 	}
@@ -238,13 +254,16 @@ void usage(void) {
 
 int main(int argc, char **argv) {
 	int r;
+	// 是否为交互式终端
 	int interactive = iscons(0);
+	// 是否要输出输入的命令
 	int echocmds = 0;
 	printf("\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	printf("::                                                         ::\n");
 	printf("::                     MOS Shell 2024                      ::\n");
 	printf("::                                                         ::\n");
 	printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+	// 参数解析部分
 	ARGBEGIN {
 	case 'i':
 		interactive = 1;
@@ -260,6 +279,7 @@ int main(int argc, char **argv) {
 	if (argc > 1) {
 		usage();
 	}
+	// 如果需要执行脚本，则关闭标准输入，改为文件作为输入
 	if (argc == 1) {
 		close(0);
 		if ((r = open(argv[0], O_RDONLY)) < 0) {
@@ -267,25 +287,33 @@ int main(int argc, char **argv) {
 		}
 		user_assert(r == 0);
 	}
+	// 在循环中不断读入命令行并进行处理
 	for (;;) {
+		// 作为交互式终端，先打印一个"$"
 		if (interactive) {
 			printf("\n$ ");
 		}
+		// 读入一份命令到buf
 		readline(buf, sizeof buf);
 
+		// 忽略以"#"开头的注释
 		if (buf[0] == '#') {
 			continue;
 		}
+		// 在echocmds模式下输出读入的命令
 		if (echocmds) {
 			printf("# %s\n", buf);
 		}
+		// 使用fork创建一个进程，执行命令
 		if ((r = fork()) < 0) {
 			user_panic("fork: %d", r);
 		}
+		// 对于父子进程
+		// 子进程执行命令
 		if (r == 0) {
 			runcmd(buf);
 			exit();
-		} else {
+		} else { // 父进程等待子进程执行完毕
 			wait(r);
 		}
 	}

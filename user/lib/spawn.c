@@ -197,8 +197,11 @@ int spawn(char *file_path, char **argv) {
 			}
 		}
 	}
+	// 关闭文件
 	close(fd);
 
+	// 设置栈帧
+	// 父子进程共享USTACKTOP地址之下的数据，但不共享程序部分
 	struct Trapframe tf = envs[ENVX(child)].env_tf;
 	tf.cp0_epc = entrypoint;
 	tf.regs[29] = sp;
@@ -207,6 +210,7 @@ int spawn(char *file_path, char **argv) {
 	}
 
 	// Pages with 'PTE_LIBRARY' set are shared between the parent and the child.
+	// 设置父子进程共享页面
 	for (u_int pdeno = 0; pdeno <= PDX(USTACKTOP); pdeno++) {
 		if (!(vpd[pdeno] & PTE_V)) {
 			continue;
@@ -216,7 +220,6 @@ int spawn(char *file_path, char **argv) {
 			u_int perm = vpt[pn] & ((1 << PGSHIFT) - 1);
 			if ((perm & PTE_V) && (perm & PTE_LIBRARY)) {
 				void *va = (void *)(pn << PGSHIFT);
-
 				if ((r = syscall_mem_map(0, va, child, va, perm)) < 0) {
 					debugf("spawn: syscall_mem_map %x %x: %d\n", va, child, r);
 					goto err2;
@@ -225,24 +228,30 @@ int spawn(char *file_path, char **argv) {
 		}
 	}
 
+	// 设定子进程为运行状态以将其加入进程调度队列，实现子进程的创建
 	if ((r = syscall_set_env_status(child, ENV_RUNNABLE)) < 0) {
 		debugf("spawn: syscall_set_env_status %x: %d\n", child, r);
 		goto err2;
 	}
 	return child;
 
+// 异常处理程序
+// 销毁创建的子进程
 err2:
 	syscall_env_destroy(child);
 	return r;
 err1:
 	syscall_env_destroy(child);
+// 关闭打开的文件
 err:
 	close(fd);
 	return r;
 }
 
-int spawnl(char *prog, char *args, ...) {
+// 将磁盘中的文件加载到内存，并以此创建一个新进程
+int spawnl(char *file_path, char *args, ...) {
 	// Thanks to MIPS calling convention, the layout of arguments on the stack
 	// are straightforward.
-	return spawn(prog, &args);
+	// 由于mips的传参机制，可以直接这样传参
+	return spawn(file_path, &args);
 }

@@ -98,11 +98,9 @@ int strcmp(const char *p, const char *q) {
 
 char *strcat(char *dst, const char *src) {
 	char *ret = dst;
-
 	while (*dst++);
 	dst--;
 	while ((*dst++ = *src++) != 0) {
 	}
-
 	return ret;
 }

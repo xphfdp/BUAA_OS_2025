@@ -8,3 +8,4 @@ USERAPPS += num.b \
 		mkdir.b \
 		rm.b \
 		exit.b \
+		pwd.b \

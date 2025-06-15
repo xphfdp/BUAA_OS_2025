@@ -304,7 +304,7 @@ int env_alloc(struct Env **new, u_int parent_id) {
 	// Reserve space for 'argc' and 'argv'.
 	// 为了给main函数的参数argc和argc留出空间，所以需要减去sizeof(int) + sizeof(char **)
 	e->env_tf.regs[29] = USTACKTOP - sizeof(int) - sizeof(char **); //设置用户栈的栈指针
-
+	strcpy(e->r_path,"/");
 	/* Step 5: Remove the new Env from env_free_list. */
 	/* Exercise 3.4: Your code here. (4/4) */
 	// 从空闲进程链表中删除这一进程

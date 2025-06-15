@@ -30,6 +30,7 @@ struct Dev devfile = {
 // 打开一个文件，具体地，按照mode模式打开path的文件，同时返回文件描述符的id
 int open(const char *path, int mode) {
 	int r;
+	char ppath[1024] = {0};
 
 	// Step 1: Alloc a new 'Fd' using 'fd_alloc' in fd.c.
 	// Hint: return the error code if failed.
@@ -38,11 +39,42 @@ int open(const char *path, int mode) {
 	// 获取新的文件描述符
 	try(fd_alloc(&fd));
 
+	if (path[0] != '/') {
+		if (path[0] == '.') {
+			path += 2;
+		}
+
+		syscall_get_rpath(ppath);
+		int len1 = strlen(ppath);
+		int len2 = strlen(path);
+		if (len1 == 1) {
+			strcpy(ppath + 1, path);
+		} else {
+			ppath[len1] = '/';
+			strcpy(ppath + len1 + 1, path);
+			ppath[len1 + 1 + len2] = '\0';
+		}
+	} else {
+		strcpy(ppath, path);
+	}
+
 	// Step 2: Prepare the 'fd' using 'fsipc_open' in fsipc.c.
 	/* Exercise 5.9: Your code here. (2/5) */
 	// 使用文件服务IPC打开文件
 	// 文件系统服务进程会通过fd设置相关信息
-	try(fsipc_open(path, mode, fd));
+	// try(fsipc_open(path, mode, fd));
+	if ((mode & O_CREAT) == 0) {
+		if ((r = fsipc_open(ppath, mode, fd)) != 0) {
+			return r;
+		}
+	} else {
+		mode &= ~O_CREAT;
+		if ((r = fsipc_open(ppath, mode, fd)) != 0) {
+			return fsipc_create(ppath, mode);
+		} else {
+			return 1;
+		}
+	}
 
 	// Step 3: Set 'va' to the address of the page where the 'fd''s data is cached, using
 	// 'fd2data'. Set 'size' and 'fileid' correctly with the value in 'fd' as a 'Filefd'.
@@ -283,4 +315,12 @@ int sync(void) {
 
 int create(const char *path, u_int f_type) {
 	return fsipc_create(path, f_type);
+}
+
+int chdir(char *newPath) {
+	return syscall_set_rpath(newPath);
+}
+
+int getcwd(char *path) {
+	return syscall_get_rpath(path);
 }

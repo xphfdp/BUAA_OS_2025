@@ -189,6 +189,11 @@ void runcmd(char *s) {
 		return;
 	}
 	argv[argc] = 0;
+
+	if (strcmp("cd", argv[0]) == 0) {
+		useCD(argc, argv[1]);
+		return;
+	}
 	// 创建一个进程执行命令
 	int child = spawn(argv[0], argv);
 	// 关闭所有打开的文件
@@ -245,6 +250,29 @@ void readline(char *buf, u_int n) {
 	buf[0] = 0;
 }
 
+int parseCD(char *buf) {
+	char *p = buf;
+	if (strlen(buf) < 2) {
+		return 0;
+	}
+	if (*p == 'c' && *(p + 1) == 'd') {
+		return 1;
+	} else {
+		for (int i = 0;i<strlen(buf) - 2;i++) {
+			if (*(p+i) == ';' || *(p+i) == '&') {
+				i++;
+				while (*(p+i) == ' ') {
+					i++;
+				}
+				if (i <= strlen(buf) - 2 && *(p + i) == 'c' && *(p+i+1) == 'd') {
+					return 1;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
 char buf[1024];
 
 void usage(void) {
@@ -258,9 +286,10 @@ int main(int argc, char **argv) {
 	int interactive = iscons(0);
 	// 是否要输出输入的命令
 	int echocmds = 0;
+	char curPath[256] = {0};
 	printf("\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	printf("::                                                         ::\n");
-	printf("::                     MOS Shell 2024                      ::\n");
+	printf("::                     MOS Shell 2025                      ::\n");
 	printf("::                                                         ::\n");
 	printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	// 参数解析部分
@@ -291,6 +320,10 @@ int main(int argc, char **argv) {
 	for (;;) {
 		// 作为交互式终端，先打印一个"$"
 		if (interactive) {
+			if ((r = getcwd(curPath)) < 0) {
+				printf("G");
+				exit();
+			}
 			printf("\n$ ");
 		}
 		// 读入一份命令到buf
@@ -304,9 +337,13 @@ int main(int argc, char **argv) {
 		if (echocmds) {
 			printf("# %s\n", buf);
 		}
-		// 使用fork创建一个进程，执行命令
-		if ((r = fork()) < 0) {
-			user_panic("fork: %d", r);
+		if (parseCD(buf) == 0) {
+			if ((r = fork()) < 0) {
+				user_panic("fork: %d", r);
+			}
+		} else {
+			runcmd(buf);
+			continue;
 		}
 		// 对于父子进程
 		// 子进程执行命令
@@ -318,4 +355,47 @@ int main(int argc, char **argv) {
 		}
 	}
 	return 0;
+}
+
+void useCD(int argc, char* argv) {
+	int r;
+	char cur[1024] = {0};
+	struct Stat st = {0};
+
+	if (argc == 1) {
+		cur[0] = '/';
+	} else if (argv[0] != '/') {
+		char *p = argv;
+		if (argv[0] == '.') {
+			p += 2;
+		}
+		syscall_get_rpath(cur);
+		int len1 = strlen(cur);
+		int len2 = strlen(p);
+		if (len1 == 1) {
+			strcpy(cur + 1, p);
+		} else {
+			cur[len1] = '/';
+			strcpy(cur + len1 + 1, p);
+			cur[len1 + 1 + len2] = '\0';
+		}
+	} else {
+		strcpy(cur, argv);
+	}
+	printf("cur:%s\n", cur);
+
+	if ((r = stat(cur, &st)) < 0) {
+		printf("4");
+		exit();
+	}
+	if (!st.st_isdir) {
+		printf("%s is not a directory\n", cur);
+		printf("5");
+		exit();
+	}
+	if ((r = chdir(cur)) < 0) {
+		printf("6");
+		exit();
+	}
+	return;
 }

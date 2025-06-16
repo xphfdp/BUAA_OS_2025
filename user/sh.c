@@ -382,15 +382,15 @@ void useCD(int argc, char* argv) {
 	} else {
 		strcpy(cur, argv);
 	}
-	printf("cur:%s\n", cur);
+	// printf("cur:%s\n", cur);
 
 	if ((r = stat(cur, &st)) < 0) {
-		printf("4");
+		printf("cd: The directory %s does not exist\n", cur);
 		exit();
 	}
 	if (!st.st_isdir) {
-		printf("%s is not a directory\n", cur);
-		printf("5");
+		printf("cd: %s is not a directory\n", cur);
+		// printf("5");
 		exit();
 	}
 	if ((r = chdir(cur)) < 0) {

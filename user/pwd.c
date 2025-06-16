@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
     } else {
         char path[128] = {0};
         getcwd(path);
-        printf("current path: %s\n", path);
+        printf("%s\n", path);
     }
 
     return 0;

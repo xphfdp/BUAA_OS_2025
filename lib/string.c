@@ -104,3 +104,22 @@ char *strcat(char *dst, const char *src) {
 	}
 	return ret;
 }
+
+char *strrchr(const char *s, int c) {
+	    if(s == NULL)
+    {
+        return NULL;
+    }
+
+    char *p_char = NULL;
+    while(*s != '\0')
+    {
+        if(*s == (char)c)
+        {
+            p_char = (char *)s;
+        }
+        s++;
+    }
+
+    return p_char;
+}

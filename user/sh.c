@@ -362,8 +362,25 @@ void useCD(int argc, char* argv) {
 	char cur[1024] = {0};
 	struct Stat st = {0};
 
+	// 检查参数数量是否超过1个 (cd 本身是第1个，所以 argc > 2意味着有多个参数)
+	if (argc > 2) {
+		printf("Too many args for cd command\n");
+		return; // 返回，不继续执行
+	}
+
 	if (argc == 1) {
 		cur[0] = '/';
+	} else if (strcmp(argv, ".") == 0) {
+		return;
+	} else if (strcmp(argv, "..") == 0) {
+		syscall_get_rpath(cur);
+		char *last_slash = strrchr(cur, '/');
+		if (last_slash != cur) {
+			*last_slash = '\0';
+		} else {
+			cur[0] = '/';
+			cur[1] = '\0';
+		}
 	} else if (argv[0] != '/') {
 		char *p = argv;
 		if (argv[0] == '.') {
@@ -382,16 +399,14 @@ void useCD(int argc, char* argv) {
 	} else {
 		strcpy(cur, argv);
 	}
-	// printf("cur:%s\n", cur);
 
 	if ((r = stat(cur, &st)) < 0) {
 		printf("cd: The directory %s does not exist\n", cur);
-		exit();
+		return;
 	}
 	if (!st.st_isdir) {
 		printf("cd: %s is not a directory\n", cur);
-		// printf("5");
-		exit();
+		return;
 	}
 	if ((r = chdir(cur)) < 0) {
 		printf("6");

@@ -757,6 +757,10 @@ int file_create(char *path, struct File **file) {
 		return r;
 	}
 
+    // // --- 新增修复代码 ---
+    // f->f_dir = dir; // 设置新文件的父目录指针
+    // // --- 修复代码结束 ---
+
 	strcpy(f->f_name, name);
 	*file = f;
 	return 0;

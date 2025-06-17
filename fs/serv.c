@@ -148,46 +148,20 @@ void serve_open(u_int envid, struct Fsreq_open *rq) {
 	int r;
 	struct Open *o;
 
-	// --- 新增代码开始 ---
-	char full_path[MAXPATHLEN]; // 创建一个缓冲区来存放完整的绝对路径
-
-	// 判断请求的路径是否是相对路径 (不是以 '/' 开头)
-	if (rq->req_path[0] != '/') {
-		// 是相对路径，需要和当前工作目录拼接
-		struct Env *e = &envs[ENVX(envid)]; // 获取当前进程的环境块
-
-		// debugf("[serve_open] Relative path request! CWD from env is: '%s'\n", e->r_path);
-		// 复制当前工作目录路径到缓冲区
-		strcpy(full_path, e->r_path);
-
-		// 如果当前工作目录不是根目录，在末尾添加 '/'
-		if (strcmp(e->r_path, "/") != 0) {
-			strcat(full_path, "/");
-		}
-		
-		// 拼接上用户请求的相对路径
-		strcat(full_path, rq->req_path);
-	} else {
-		// 是绝对路径，直接使用
-		strcpy(full_path, rq->req_path);
-	}
-	// debugf("[serve_open] Final absolute path to walk: '%s'\n", full_path);
-	// --- 新增代码结束 ---
-
 	// Find a file id.
 	if ((r = open_alloc(&o)) < 0) {
 		ipc_send(envid, r, 0, 0);
 		return;
 	}
 
-	if ((rq->req_omode & O_CREAT) && (r = file_create(full_path, &f)) < 0 &&
+	if ((rq->req_omode & O_CREAT) && (r = file_create(rq->req_path, &f)) < 0 &&
 	    r != -E_FILE_EXISTS) {
 		ipc_send(envid, r, 0, 0);
 		return;
 	}
 
 	// Open the file.
-	if ((r = file_open(full_path, &f)) < 0) {
+	if ((r = file_open(rq->req_path, &f)) < 0) {
 		ipc_send(envid, r, 0, 0);
 		return;
 	}
@@ -366,7 +340,7 @@ void serve_sync(u_int envid) {
 void serve_create(u_int envid, struct Fsreq_create *rq) {
 	struct File *f;
 	int r;
-		// --- 新增代码开始 ---
+	// --- 新增代码开始 ---
 	char full_path[MAXPATHLEN]; // 创建一个缓冲区来存放完整的绝对路径
 
 	// 判断请求的路径是否是相对路径 (不是以 '/' 开头)

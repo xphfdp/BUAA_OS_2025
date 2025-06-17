@@ -123,3 +123,12 @@ char *strrchr(const char *s, int c) {
 
     return p_char;
 }
+
+char *strncpy(char *dest, const char *src, int len) {
+    char *temp;
+    temp = dest;
+    for(int i =0;*src!='\0' && i<len; i++,temp++,src++)
+         *temp = *src;
+   *temp = '\0';
+    return dest;
+}

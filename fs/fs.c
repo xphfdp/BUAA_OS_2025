@@ -659,7 +659,7 @@ int walk_path(char *path, struct File **pdir, struct File **pfile, char *lastele
 	}
 
 	*pfile = 0;
-	// debugf("[walk_path] Start walking. Initial dir: '%s'\n", file->f_name);
+
 	// find the target file by name recursively.
 	while (*path != '\0') {
 		dir = file;
@@ -676,24 +676,6 @@ int walk_path(char *path, struct File **pdir, struct File **pfile, char *lastele
 		memcpy(name, p, path - p);
 		name[path - p] = '\0';
 		path = skip_slash(path);
-
-		// --- 新增代码开始 ---
-		// debugf("  [loop] Current dir: '%s', processing component: '%s'\n", dir->f_name, name);
-		// 增加对 "." 和 ".." 的处理
-		if (strcmp(name, ".") == 0) {
-			// 如果是 ".", 目录不变, 继续解析下一个路径部分
-			continue;
-		}
-		if (strcmp(name, "..") == 0) {
-			// 如果是 "..", 返回到父目录
-			if (file != &super->s_root) { // 不能越过根目录
-				file = file->f_dir;
-		//		debugf("    [..] Moved up. New current dir is: '%s'\n", file->f_name);
-			}
-			continue;
-		}
-		// --- 新增代码结束 ---
-
 		if (dir->f_type != FTYPE_DIR) {
 			return -E_NOT_FOUND;
 		}
@@ -713,7 +695,6 @@ int walk_path(char *path, struct File **pdir, struct File **pfile, char *lastele
 
 			return r;
 		}
-		// debugf("    [lookup] Found '%s'. New current dir is: '%s'\n", name, file->f_name);
 	}
 
 	if (pdir) {
@@ -756,10 +737,6 @@ int file_create(char *path, struct File **file) {
 	if (dir_alloc_file(dir, &f) < 0) {
 		return r;
 	}
-
-    // // --- 新增修复代码 ---
-    // f->f_dir = dir; // 设置新文件的父目录指针
-    // // --- 修复代码结束 ---
 
 	strcpy(f->f_name, name);
 	*file = f;

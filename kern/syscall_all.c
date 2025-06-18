@@ -8,22 +8,6 @@
 
 extern struct Env *curenv;
 
-int sys_set_rpath(char *newPath) {
-	if (strlen(newPath) > 1024) {
-		return -1;
-	}
-	strcpy(curenv->r_path, newPath);
-	return 0;
-}
-
-int sys_get_rpath(char *dst) {
-	if (dst == 0) {
-		return -1;
-	}
-	strcpy(dst, curenv->r_path);
-	return 0;
-}
-
 /* Overview:
  * 	This function is used to print a character on screen.
  *
@@ -277,17 +261,20 @@ int sys_exofork(void) {
 	struct Env *e;
 
 	/* Step 1: Allocate a new env using 'env_alloc'. */
+	/* Exercise 4.9: Your code here. (1/4) */
 	try(env_alloc(&e, curenv->env_id));
 
-	strcpy(e->r_path, curenv->r_path);
 	/* Step 2: Copy the current Trapframe below 'KSTACKTOP' to the new env's 'env_tf'. */
+	/* Exercise 4.9: Your code here. (2/4) */
 	e->env_tf = *((struct Trapframe *)KSTACKTOP - 1);
 
 	/* Step 3: Set the new env's 'env_tf.regs[2]' to 0 to indicate the return value in child. */
+	/* Exercise 4.9: Your code here. (3/4) */
 	// 将子进程的返回值设为0
 	e->env_tf.regs[2] = 0;
 
 	/* Step 4: Set up the new env's 'env_status' and 'env_pri'.  */
+	/* Exercise 4.9: Your code here. (4/4) */
 	e->env_status = ENV_NOT_RUNNABLE;
 	e->env_pri = curenv->env_pri;
 
@@ -628,8 +615,6 @@ void *syscall_table[MAX_SYSNO] = {
     [SYS_cgetc] = sys_cgetc,
     [SYS_write_dev] = sys_write_dev,
     [SYS_read_dev] = sys_read_dev,
-	[SYS_get_rpath] = sys_get_rpath,
-	[SYS_set_rpath] = sys_set_rpath,
 };
 
 /* Overview:

@@ -68,8 +68,6 @@ int syscall_ipc_recv(void *dstva);
 int syscall_cgetc(void);
 int syscall_write_dev(void *va, u_int dev, u_int len);
 int syscall_read_dev(void *va, u_int dev, u_int len);
-int syscall_set_rpath(char *newPath);
-int syscall_get_rpath(char *dst);
 
 // ipc.c
 void ipc_send(u_int whom, u_int val, const void *srcva, u_int perm);
@@ -102,8 +100,6 @@ int fsipc_dirty(u_int, u_int);
 int fsipc_remove(const char *);
 int fsipc_sync(void);
 int fsipc_incref(u_int);
-int fsipc_create(const char *, int);
-
 
 // fd.c
 int close(int fd);
@@ -122,9 +118,6 @@ int read_map(int fd, u_int offset, void **blk);
 int remove(const char *path);
 int ftruncate(int fd, u_int size);
 int sync(void);
-int create(const char *path, u_int f_type);
-int chdir(char *newPath);
-int getcwd(char *path);
 
 #define user_assert(x)                                                                             \
 	do {                                                                                       \

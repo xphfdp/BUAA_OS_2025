@@ -98,37 +98,11 @@ int strcmp(const char *p, const char *q) {
 
 char *strcat(char *dst, const char *src) {
 	char *ret = dst;
+
 	while (*dst++);
 	dst--;
 	while ((*dst++ = *src++) != 0) {
 	}
+
 	return ret;
-}
-
-char *strrchr(const char *s, int c) {
-	    if(s == NULL)
-    {
-        return NULL;
-    }
-
-    char *p_char = NULL;
-    while(*s != '\0')
-    {
-        if(*s == (char)c)
-        {
-            p_char = (char *)s;
-        }
-        s++;
-    }
-
-    return p_char;
-}
-
-char *strncpy(char *dest, const char *src, int len) {
-    char *temp;
-    temp = dest;
-    for(int i =0;*src!='\0' && i<len; i++,temp++,src++)
-         *temp = *src;
-   *temp = '\0';
-    return dest;
 }

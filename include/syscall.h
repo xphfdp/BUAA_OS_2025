@@ -23,8 +23,6 @@ enum {
 	SYS_cgetc,
 	SYS_write_dev,
 	SYS_read_dev,
-	SYS_get_rpath,
-	SYS_set_rpath,
 	MAX_SYSNO,
 };
 

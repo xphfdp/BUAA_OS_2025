@@ -81,81 +81,6 @@ int gettoken(char *s, char **token_pointer) {
 // 最大参数数量
 #define MAXARGS 128
 
-// 新版本的 resolve_path, 不使用 strtok, malloc, 或 free
-// resolved_path: 用于存放结果的缓冲区
-// path: 用户输入的原始路径
-void resolve_path(char *resolved_path, const char *path) {
-    char temp_path[1024]; // 用于拼接的临时缓冲区
-
-    // 步骤 1: 创建一个临时的、完整的、但未规范化的路径
-    if (path[0] == '/') {
-        // 如果已经是绝对路径，直接使用
-        strcpy(temp_path, path);
-    } else {
-        // 如果是相对路径，和当前工作目录拼接
-        getcwd(temp_path); // 获取当前工作目录
-        // 确保路径以 '/' 结尾
-        if (temp_path[strlen(temp_path) - 1] != '/') {
-            strcat(temp_path, "/");
-        }
-        strcat(temp_path, path); // 拼接相对路径
-    }
-
-    // 步骤 2: 规范化路径
-    char *p_out = resolved_path; // 指向输出缓冲区的写入位置
-    char *p_in = temp_path;    // 指向输入缓冲区的读取位置
-
-    *p_out++ = '/'; // 结果总是以 '/' 开头
-
-    while (*p_in != '\0') {
-        // 跳过连续的 '/'
-        while (*p_in == '/') {
-            p_in++;
-        }
-
-        // 找到下一个组件的结尾
-        char *component_start = p_in;
-        while (*p_in != '\0' && *p_in != '/') {
-            p_in++;
-        }
-        int component_len = p_in - component_start;
-
-        if (component_len == 0) {
-            continue; // 忽略空组件 (e.g., "a//b")
-        }
-
-        if (component_len == 1 && component_start[0] == '.') {
-            continue; // 忽略 "."
-        }
-
-        if (component_len == 2 && component_start[0] == '.' && component_start[1] == '.') {
-            // 处理 ".."
-            if (p_out > resolved_path + 1) { // 确保不在根目录
-                p_out--; // 回退覆盖掉最后的 '/'
-                while (p_out > resolved_path && *(p_out - 1) != '/') {
-                    p_out--; // 回退直到找到上一个 '/'
-                }
-            }
-        } else {
-            // 处理普通组件
-            // 拷贝组件内容
-            strncpy(p_out, component_start, component_len);
-            p_out += component_len;
-            *p_out++ = '/'; // 在组件后添加 '/'
-        }
-    }
-
-    // 步骤 3: 最终处理
-    if (p_out > resolved_path + 1) {
-        // 如果结果不是根目录 "/"，则去掉末尾的 '/'
-        *(p_out - 1) = '\0';
-    } else {
-        // 如果结果是根目录，确保以 '\0' 结尾
-        *p_out = '\0';
-    }
-}
-
-
 int parsecmd(char **argv, int *rightpipe) {
 	int argc = 0;
 	while (1) {
@@ -200,16 +125,10 @@ int parsecmd(char **argv, int *rightpipe) {
 				debugf("syntax error: > not followed by word\n");
 				exit();
 			}
-
-			// --- 新增代码：解析路径 ---
-			char resolved_filepath[1024];
-			resolve_path(resolved_filepath, t);
-			// --- 新增代码结束 ---
-
 			// 打开对应的文件，如果打开失败，则退出
-			if ((fd = open(resolved_filepath, O_WRONLY | O_CREAT | O_TRUNC)) < 0)
+			if ((fd = open(t, O_WRONLY | O_CREAT | O_TRUNC)) < 0)
 			{
-				debugf("open %s: %d\n", resolved_filepath, fd);
+				debugf("open %s: %d\n", t, fd);
 				exit();
 			}
 			// 进行输出重定向
@@ -270,11 +189,6 @@ void runcmd(char *s) {
 		return;
 	}
 	argv[argc] = 0;
-
-	if (strcmp("cd", argv[0]) == 0) {
-		useCD(argc, argv[1]);
-		return;
-	}
 	// 创建一个进程执行命令
 	int child = spawn(argv[0], argv);
 	// 关闭所有打开的文件
@@ -331,29 +245,6 @@ void readline(char *buf, u_int n) {
 	buf[0] = 0;
 }
 
-int parseCD(char *buf) {
-	char *p = buf;
-	if (strlen(buf) < 2) {
-		return 0;
-	}
-	if (*p == 'c' && *(p + 1) == 'd') {
-		return 1;
-	} else {
-		for (int i = 0;i<strlen(buf) - 2;i++) {
-			if (*(p+i) == ';' || *(p+i) == '&') {
-				i++;
-				while (*(p+i) == ' ') {
-					i++;
-				}
-				if (i <= strlen(buf) - 2 && *(p + i) == 'c' && *(p+i+1) == 'd') {
-					return 1;
-				}
-			}
-		}
-	}
-	return 0;
-}
-
 char buf[1024];
 
 void usage(void) {
@@ -367,10 +258,9 @@ int main(int argc, char **argv) {
 	int interactive = iscons(0);
 	// 是否要输出输入的命令
 	int echocmds = 0;
-	char curPath[256] = {0};
 	printf("\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	printf("::                                                         ::\n");
-	printf("::                     MOS Shell 2025                      ::\n");
+	printf("::                     MOS Shell 2024                      ::\n");
 	printf("::                                                         ::\n");
 	printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	// 参数解析部分
@@ -401,10 +291,6 @@ int main(int argc, char **argv) {
 	for (;;) {
 		// 作为交互式终端，先打印一个"$"
 		if (interactive) {
-			if ((r = getcwd(curPath)) < 0) {
-				printf("G");
-				exit();
-			}
 			printf("\n$ ");
 		}
 		// 读入一份命令到buf
@@ -418,13 +304,9 @@ int main(int argc, char **argv) {
 		if (echocmds) {
 			printf("# %s\n", buf);
 		}
-		if (parseCD(buf) == 0) {
-			if ((r = fork()) < 0) {
-				user_panic("fork: %d", r);
-			}
-		} else {
-			runcmd(buf);
-			continue;
+		// 使用fork创建一个进程，执行命令
+		if ((r = fork()) < 0) {
+			user_panic("fork: %d", r);
 		}
 		// 对于父子进程
 		// 子进程执行命令
@@ -436,62 +318,4 @@ int main(int argc, char **argv) {
 		}
 	}
 	return 0;
-}
-
-void useCD(int argc, char* argv) {
-	int r;
-	char cur[1024] = {0};
-	struct Stat st = {0};
-
-	// 检查参数数量是否超过1个 (cd 本身是第1个，所以 argc > 2意味着有多个参数)
-	if (argc > 2) {
-		printf("Too many args for cd command\n");
-		return; // 返回，不继续执行
-	}
-
-	if (argc == 1) {
-		cur[0] = '/';
-	} else if (strcmp(argv, ".") == 0) {
-		return;
-	} else if (strcmp(argv, "..") == 0) {
-		syscall_get_rpath(cur);
-		char *last_slash = strrchr(cur, '/');
-		if (last_slash != cur) {
-			*last_slash = '\0';
-		} else {
-			cur[0] = '/';
-			cur[1] = '\0';
-		}
-	} else if (argv[0] != '/') {
-		char *p = argv;
-		if (argv[0] == '.') {
-			p += 2;
-		}
-		syscall_get_rpath(cur);
-		int len1 = strlen(cur);
-		int len2 = strlen(p);
-		if (len1 == 1) {
-			strcpy(cur + 1, p);
-		} else {
-			cur[len1] = '/';
-			strcpy(cur + len1 + 1, p);
-			cur[len1 + 1 + len2] = '\0';
-		}
-	} else {
-		strcpy(cur, argv);
-	}
-
-	if ((r = stat(cur, &st)) < 0) {
-		printf("cd: The directory %s does not exist\n", cur);
-		return;
-	}
-	if (!st.st_isdir) {
-		printf("cd: %s is not a directory\n", cur);
-		return;
-	}
-	if ((r = chdir(cur)) < 0) {
-		printf("6");
-		exit();
-	}
-	return;
 }

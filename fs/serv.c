@@ -337,40 +337,6 @@ void serve_sync(u_int envid) {
 	ipc_send(envid, 0, 0, 0);
 }
 
-void serve_create(u_int envid, struct Fsreq_create *rq) {
-	struct File *f;
-	int r;
-	// --- 新增代码开始 ---
-	char full_path[MAXPATHLEN]; // 创建一个缓冲区来存放完整的绝对路径
-
-	// 判断请求的路径是否是相对路径 (不是以 '/' 开头)
-	if (rq->req_path[0] != '/') {
-		// 是相对路径，需要和当前工作目录拼接
-		struct Env *e = &envs[ENVX(envid)]; // 获取当前进程的环境块
-
-		// 复制当前工作目录路径到缓冲区
-		strcpy(full_path, e->r_path);
-
-		// 如果当前工作目录不是根目录，在末尾添加 '/'
-		if (strcmp(e->r_path, "/") != 0) {
-			strcat(full_path, "/");
-		}
-		
-		// 拼接上用户请求的相对路径
-		strcat(full_path, rq->req_path);
-	} else {
-		// 是绝对路径，直接使用
-		strcpy(full_path, rq->req_path);
-	}
-	// --- 新增代码结束 ---
-	if ((r = file_create(full_path, &f)) < 0) {
-		ipc_send(envid, r, 0, 0);
-		return;
-	}
-	f->f_type = rq->f_type;
-	ipc_send(envid, 0, 0, 0);
-}
-
 /*
  * The serve function table
  * File system use this table and the request number to
@@ -379,7 +345,7 @@ void serve_create(u_int envid, struct Fsreq_create *rq) {
 void *serve_table[MAX_FSREQNO] = {
     [FSREQ_OPEN] = serve_open,	 [FSREQ_MAP] = serve_map,     [FSREQ_SET_SIZE] = serve_set_size,
     [FSREQ_CLOSE] = serve_close, [FSREQ_DIRTY] = serve_dirty, [FSREQ_REMOVE] = serve_remove,
-    [FSREQ_SYNC] = serve_sync, [FSREQ_CREATE] = serve_create,
+    [FSREQ_SYNC] = serve_sync,
 };
 
 /*

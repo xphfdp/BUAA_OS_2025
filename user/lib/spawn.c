@@ -112,20 +112,8 @@ int spawn(char *file_path, char **argv) {
 	// 打开磁盘路径对应的文件
 	// 如果打开失败则返回错误
 	int fd;
-	char path[1024] = {0};
-	if (file_path[0] != '/') {
-		path[0] = '/';
-		strcpy(path + 1, file_path);
-	} else {
-		strcpy(path, file_path);
-	}
-	char cmd[1024] = {0};
-	if ((fd = open(path, O_RDONLY)) < 0) {
-		strcpy(cmd, path);
-		strcat(cmd, ".b\0");
-		if ((fd = open(cmd, O_RDONLY)) < 0) {
-			return fd;
-		}
+	if ((fd = open(file_path, O_RDONLY)) < 0) {
+		return fd;
 	}
 
 	// Step 2: Read the ELF header (of type 'Elf32_Ehdr') from the file into 'elfbuf' using

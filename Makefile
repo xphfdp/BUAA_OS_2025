@@ -31,6 +31,11 @@ ifeq ($(call lab-ge,5),true)
 	targets         += fs-image
 endif
 
+DEBUG ?= 0
+ifeq ($(DEBUG), 1)
+	CFLAGS += -DDEBUG
+endif
+
 objects                 := $(addsuffix /*.o, $(modules)) $(addsuffix /*.x, $(user_modules))
 modules                 += $(user_modules)
 
@@ -85,7 +90,7 @@ run:
 	$(QEMU) $(QEMU_FLAGS) -kernel $(mos_elf)
 
 dbg_run:
-	$(QEMU) $(QEMU_FLAGS) -kernel $(mos_elf) -s -S
+	$(QEMU) $(QEMU_FLAGS) -kernel $(mos_elf) -gdb tcp::26000 -S
 
 dbg:
 	export QEMU="$(QEMU)"

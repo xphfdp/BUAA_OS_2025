@@ -14,14 +14,20 @@
 #define pages ((const volatile struct Page *)UPAGES) // 与上面的envs同理
 
 // libos
-void exit(void) __attribute__((noreturn));
+void exit(int) __attribute__((noreturn));
 
 extern const volatile struct Env *env;
 
 #define USED(x) (void)(x)
+#define C(x) ((x) - '@')
 
 // debugf
 void debugf(const char *fmt, ...);
+#ifdef DEBUG
+#define DEBUGF(...) debugf(__VA_ARGS__)
+#else
+#define DEBUGF(...) ((void)0)
+#endif
 
 void _user_panic(const char *, int, const char *, ...) __attribute__((noreturn));
 void _user_halt(const char *, int, const char *, ...) __attribute__((noreturn));
@@ -40,7 +46,7 @@ void _user_halt(const char *, int, const char *, ...) __attribute__((noreturn));
 
 /// fork, spawn
 int spawn(char *prog, char **argv);
-int spawnl(char *prot, char *args, ...);
+int spawnl(char *prog, char *args, ...);
 int fork(void);
 
 /// syscalls
@@ -68,13 +74,16 @@ int syscall_ipc_recv(void *dstva);
 int syscall_cgetc(void);
 int syscall_write_dev(void *va, u_int dev, u_int len);
 int syscall_read_dev(void *va, u_int dev, u_int len);
+int syscall_chdir(u_int envid, struct File *f, const char *path);
+int syscall_set_variable_set(void *vset);
+int syscall_set_exit_status(int status);
 
 // ipc.c
 void ipc_send(u_int whom, u_int val, const void *srcva, u_int perm);
 u_int ipc_recv(u_int *whom, void *dstva, u_int *perm);
 
 // wait.c
-void wait(u_int envid);
+int wait(u_int envid);
 
 // console.c
 int opencons(void);
@@ -100,6 +109,8 @@ int fsipc_dirty(u_int, u_int);
 int fsipc_remove(const char *);
 int fsipc_sync(void);
 int fsipc_incref(u_int);
+int fsipc_chdir(const char *);
+int fsipc_mkdir(const char *path, int isRecursive);
 
 // fd.c
 int close(int fd);
@@ -111,6 +122,8 @@ int readn(int fd, void *buf, u_int nbytes);
 int dup(int oldfd, int newfd);
 int fstat(int fdnum, struct Stat *stat);
 int stat(const char *path, struct Stat *);
+int chdir(const char *path);
+int mkdir(const char *path, int isRecursive);
 
 // file.c
 int open(const char *path, int mode);
@@ -140,7 +153,7 @@ int sync(void);
 #define O_TRUNC 0x0200	 /* truncate to zero length */
 
 // Unimplemented open modes
-#define O_EXCL 0x0400  /* error if already exists */
-#define O_MKDIR 0x0800 /* create directory, not regular file */
-
+#define O_EXCL 0x0800  /* error if already exists */
+#define O_MKDIR 0x1000 /* create directory, not regular file */
+#define O_APPEND 0x0400
 #endif

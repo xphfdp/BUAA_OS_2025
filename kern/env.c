@@ -8,8 +8,9 @@
 
 struct Env envs[NENV] __attribute__((aligned(PAGE_SIZE))); // All environments
 
-struct Env *curenv = NULL;	      // the current env
-static struct Env_list env_free_list; // Free list
+struct Env *curenv = NULL;	      		// the current env
+struct Env_list env_free_list;			// Free listAdd commentMore actions
+static struct Env_list env_dying_list;	// Dying list
 
 // Invariant: 'env' in 'env_sched_list' iff. 'env->env_status' is 'RUNNABLE'.
 struct Env_sched_list env_sched_list; // Runnable list
@@ -161,6 +162,7 @@ void env_init(void) {
 	 * 'TAILQ_INIT'. */
 	/* Exercise 3.1: Your code here. (1/2) */
 	LIST_INIT(&env_free_list); //初始化空闲进程链表
+	LIST_INIT(&env_dying_list);
 	TAILQ_INIT(&env_sched_list); //初始化调度进程链表
 
 	/* Step 2: Traverse the elements of 'envs' array, set their status to 'ENV_FREE' and insert
@@ -432,10 +434,11 @@ struct Env *env_create(const void *binary, size_t size, int priority) {
 // 释放进程以及其所使用的内存
 void env_free(struct Env *e) {
 	Pte *pt;
-	u_int pdeno, pteno, pa;
+	u_int pdeno, pteno, pa, parent_id;
+	struct Env *p;
 
 	/* Hint: Note the environment's demise.*/
-	printk("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+	// printk("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
 
 	/* Hint: Flush all mapped pages in the user portion of the address space */
 	for (pdeno = 0; pdeno < PDX(UTOP); pdeno++) {
@@ -466,6 +469,32 @@ void env_free(struct Env *e) {
 	/* Hint: invalidate page directory in TLB */
 	tlb_invalidate(e->env_asid, UVPT + (PDX(UVPT) << PGSHIFT));
 	/* Hint: return the environment to the free list. */
+
+	// check if there are any children of this env
+	// if so, set their status to FREE
+	LIST_FOREACH(p, &env_dying_list, env_dying_link) {
+		if (p->env_parent_id == e->env_id) {
+			p->env_status = ENV_FREE;
+			LIST_REMOVE(p, env_dying_link);
+			LIST_INSERT_HEAD(&env_free_list, p, env_link);
+			DEBUGF("[%d] child env %d of %d is free\n", curenv ? curenv->env_id : 0,
+			       p->env_id, e->env_id);
+		}
+	}
+
+	// if parent still alive(not free), set status to dying
+	// for parent to retrieve child exit status
+	// if parent is dead, set status to free
+	parent_id = e->env_parent_id;
+	if (parent_id != 0 && envid2env(parent_id, &p, 0) == 0) {
+		e->env_status = ENV_DYING;
+		LIST_INSERT_HEAD(&env_dying_list, (e), env_dying_link);
+		TAILQ_REMOVE(&env_sched_list, (e), env_sched_link);
+		DEBUGF("[%d] env %d is dying, parent %d\n", curenv ? curenv->env_id : 0,
+		       e->env_id, parent_id);
+		return;
+	}
+
 	e->env_status = ENV_FREE;
 	LIST_INSERT_HEAD((&env_free_list), (e), env_link);
 	TAILQ_REMOVE(&env_sched_list, (e), env_sched_link);
@@ -481,7 +510,7 @@ void env_destroy(struct Env *e) {
 	/* Hint: schedule to run a new environment. */
 	if (curenv == e) {
 		curenv = NULL;
-		printk("i am killed ... \n");
+		// printk("i am killed ... \n");
 		schedule(1);
 	}
 }

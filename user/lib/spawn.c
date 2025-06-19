@@ -2,6 +2,7 @@
 #include <env.h>
 #include <lib.h>
 #include <mmu.h>
+#include <variable.h>
 
 #define debug 0
 
@@ -112,8 +113,27 @@ int spawn(char *file_path, char **argv) {
 	// 打开磁盘路径对应的文件
 	// 如果打开失败则返回错误
 	int fd;
+	int isShell = 0;
+	struct Stat st;
 	if ((fd = open(file_path, O_RDONLY)) < 0) {
-		return fd;
+		int len = strlen(file_path);
+		if (len < 2 || (len < MAXPATHLEN - 2 && (file_path[len - 1] != 'b' || file_path[len - 2] != '.'))) {
+			char tmp_path[MAXPATHLEN];
+			strcpy(tmp_path, file_path);
+			tmp_path[len] = '.';
+			tmp_path[len+1] = 'b';
+			tmp_path[len+2] = '\0';
+			if ((fd = open(tmp_path, O_RDONLY)) < 0) {
+				return fd;
+			}
+		} else {
+			return fd;
+		}
+	}
+
+	panic_on(fstat(fd, &st));
+	if (strcmp(st.st_name, "sh.b") == 0) {
+		isShell = 1;
 	}
 
 	// Step 2: Read the ELF header (of type 'Elf32_Ehdr') from the file into 'elfbuf' using
@@ -226,6 +246,26 @@ int spawn(char *file_path, char **argv) {
 				}
 			}
 		}
+	}
+
+	if (isShell && env->variable_set) {
+		if((r = syscall_mem_alloc(0, (void *)UTEMP, PTE_D)) < 0) {
+			debugf("spawn: syscall_mem_alloc %x: %d\n", child, r);
+			goto err2;
+		}
+		struct VariableSet *vset = (struct VariableSet *)UTEMP;
+		vset->exportIdx = 0;  // Reset export index
+		copy_vars(vset, env->variable_set);
+		// memcpy(vset, env->variable_set, sizeof(struct VariableSet));
+		if((r = syscall_mem_map(0, (void *)UTEMP, child, (void *)UTEMP, PTE_D)) < 0) {
+			debugf("spawn: syscall_mem_map %x: %d\n", child, r);
+			goto err2;
+		}
+		if((r = syscall_mem_unmap(0, (void *)UTEMP)) < 0) {
+			debugf("spawn: syscall_set_variable_set %x: %d\n", child, r);
+			goto err2;
+		}
+		DEBUGF("spawn: copy_vars to child %d\n", child);
 	}
 
 	// 设定子进程为运行状态以将其加入进程调度队列，实现子进程的创建

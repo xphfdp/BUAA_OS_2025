@@ -9,5 +9,8 @@ size_t strlen(const char *s);
 char *strcpy(char *dst, const char *src);
 const char *strchr(const char *s, int c);
 int strcmp(const char *p, const char *q);
+const char *strrchr(const char *s, int c);
+char *strncpy(char *dst, const char *src, size_t n);
+int isalnum(int c);
 
 #endif

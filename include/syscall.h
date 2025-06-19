@@ -23,6 +23,9 @@ enum {
 	SYS_cgetc,
 	SYS_write_dev,
 	SYS_read_dev,
+	SYS_chdir,
+	SYS_set_variable_set,
+	SYS_set_exit_status,
 	MAX_SYSNO,
 };
 

@@ -106,3 +106,36 @@ char *strcat(char *dst, const char *src) {
 
 	return ret;
 }
+
+const char *strrchr(const char *s, int c) {
+	const char *last = 0;
+
+	for (; *s; s++) {
+		if (*s == c) {
+			last = s;
+		}
+	}
+
+	return last;
+}
+
+char *strncpy(char *dst, const char *src, size_t n) {
+	char *ret = dst;
+	size_t i;
+
+	for(i = 0; i < n && *src; i++) {
+		*dst++ = *src++;
+	}
+	for (; i < n; i++) {
+		*dst++ = 0; // pad with null bytes
+	}
+
+	return ret;
+}
+
+int isalnum(int c) {
+	if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+		return 1;
+	}
+	return 0;
+}

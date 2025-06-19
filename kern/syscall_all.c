@@ -5,8 +5,10 @@
 #include <printk.h>
 #include <sched.h>
 #include <syscall.h>
+#include "../user/include/variable.h"
 
 extern struct Env *curenv;
+void simplify_path(char *);
 
 /* Overview:
  * 	This function is used to print a character on screen.
@@ -79,7 +81,7 @@ int sys_env_destroy(u_int envid) {
 	struct Env *e;
 	try(envid2env(envid, &e, 1));
 
-	printk("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
+	// printk("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
 	env_destroy(e);
 	return 0;
 }
@@ -277,7 +279,8 @@ int sys_exofork(void) {
 	/* Exercise 4.9: Your code here. (4/4) */
 	e->env_status = ENV_NOT_RUNNABLE;
 	e->env_pri = curenv->env_pri;
-
+	e->cwd = curenv->cwd;
+	strcpy(e->r_path, curenv->r_path);
 	return e->env_id; // 父进程的返回值为子进程的envid
 }
 
@@ -298,7 +301,7 @@ int sys_set_env_status(u_int envid, u_int status) {
 
 	/* Step 1: Check if 'status' is valid. */
 	/* Exercise 4.14: Your code here. (1/3) */
-	if (status != ENV_RUNNABLE && status != ENV_NOT_RUNNABLE) {
+	if (status != ENV_RUNNABLE && status != ENV_NOT_RUNNABLE && status != ENV_FREE) {
 		return -E_INVAL;
 	}
 
@@ -308,10 +311,16 @@ int sys_set_env_status(u_int envid, u_int status) {
 
 	/* Step 3: Update 'env_sched_list' if the 'env_status' of 'env' is being changed. */
 	/* Exercise 4.14: Your code here. (3/3) */
-	if (env->env_status == ENV_RUNNABLE && status == ENV_NOT_RUNNABLE) {
-		TAILQ_REMOVE(&env_sched_list, env, env_sched_link);
-	} else if (env->env_status == ENV_NOT_RUNNABLE && status == ENV_RUNNABLE) {
-		TAILQ_INSERT_TAIL(&env_sched_list, env, env_sched_link);
+	if (env->env_status != status) {
+		if (status == ENV_RUNNABLE) {
+			TAILQ_INSERT_TAIL(&env_sched_list, env, env_sched_link);
+		} else if (status == ENV_NOT_RUNNABLE) {
+			TAILQ_REMOVE(&env_sched_list, env, env_sched_link);
+		} else {
+			LIST_REMOVE(env, env_dying_link);
+			LIST_INSERT_HEAD(&env_free_list, env, env_link);
+			DEBUGF("[%d] env %d is free\n", curenv ? curenv->env_id : 0, env->env_id);
+		}
 	}
 
 	/* Step 4: Set the 'env_status' of 'env'. */
@@ -595,6 +604,54 @@ int sys_read_dev(u_int va, u_int pa, u_int len)
 	return -E_INVAL;
 }
 
+int syscall_set_exit_status(int status) {
+	curenv->exit_status = status;
+	return 0;
+}
+
+int sys_set_variable_set(void *vset) {
+	if (is_illegal_va_range((u_long)vset, sizeof(struct VariableSet))) {
+		return -E_INVAL;
+	}
+	curenv->variable_set = vset;
+	return 0;
+}
+
+int set_rPath(char *cwd_name, const char *path) {
+	char temp[MAXPATHLEN * 2];
+
+	if (*path != '/') {
+		int len = strlen(cwd_name);
+		strcpy(temp, cwd_name);
+		temp[len] = '/';
+		strcpy(temp + len + 1, path);
+	} else {
+		strcpy(temp, path);
+	}
+
+	simplify_path(temp);
+	if (strlen(temp) >= MAXPATHLEN) {
+		return -E_BAD_PATH;
+	}
+
+	strcpy(cwd_name, temp);
+	return 0;
+}
+
+int sys_chdir(u_int envid, struct File *f, const char *path) {
+	struct Env *e;
+	if (f == NULL) {
+		return -E_INVAL;
+	}
+	if (f->f_type != FTYPE_DIR) {
+		return -E_NOT_DIR;
+	}
+	try(envid2env(envid, &e, 0));
+	try(set_rPath(e->r_path, path));
+	e->cwd = f;
+	return 0;
+}
+
 // 系统调用号
 void *syscall_table[MAX_SYSNO] = {
     [SYS_putchar] = sys_putchar,
@@ -615,6 +672,9 @@ void *syscall_table[MAX_SYSNO] = {
     [SYS_cgetc] = sys_cgetc,
     [SYS_write_dev] = sys_write_dev,
     [SYS_read_dev] = sys_read_dev,
+	[SYS_chdir] = sys_chdir,
+	[SYS_set_variable_set] = sys_set_variable_set,
+	[SYS_set_exit_status] = syscall_set_exit_status,
 };
 
 /* Overview:
@@ -657,4 +717,70 @@ void do_syscall(struct Trapframe *tf) {
 	 */
 	/* Exercise 4.2: Your code here. (4/4) */
 	tf->regs[2] = func(arg1, arg2, arg3, arg4, arg5); // 调用该系统调用函数，将返回值保存在$v0中
+}
+
+void simplify_path(char *path) {
+    char *stack[1024];
+    int top = 0;
+    int is_absolute = (path[0] == '/');
+    int dotdot_count = 0;
+    char *token = path;
+
+    // Skip leading slashes
+    while(*token == '/') {
+        token++;
+    }
+
+    while(*token) {
+        char *start = token;
+
+        // Find the next slash or end of string
+        while(*token && *token != '/') token++;
+
+        int length = token - start;
+        if(length == 0) {
+            // skip
+        }else if(length == 1 && *start == '.') {
+            // Do nothing for '.'
+        } else if(length == 2 && start[0] == '.' && start[1] == '.') {
+            if(dotdot_count < top) {
+                -- top;
+            }else if(!is_absolute) {
+                stack[top++] = start;
+                if(*token == '/') {
+                    *token = '\0';
+                    token++;
+                }
+                dotdot_count++;
+            }
+        } else {
+            // Push valid segment onto stack
+            stack[top++] = start;
+            if(*token == '/') {
+                *token = '\0';
+                token++;
+            }
+        }
+
+        // Skip slashes
+        while(*token == '/') {
+            token++;
+        }
+    }
+
+    // Construct the simplified path
+    char *result = path;
+    if(is_absolute) {
+        *result++ = '/';
+    }
+    for(int i = 0; i < top; i++) {
+        while(*stack[i]) {
+            *result++ = *stack[i]++;
+        }
+        if(i < top - 1) {
+            *result++ = '/';
+        }
+    }
+    
+    *result = '\0';
 }

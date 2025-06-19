@@ -5,6 +5,7 @@
 #include <queue.h>
 #include <trap.h>
 #include <types.h>
+#include <../user/include/fs.h>
 
 #define LOG2NENV 10
 #define NENV (1 << LOG2NENV) //进程的最大数量(1024)
@@ -14,6 +15,7 @@
 #define ENV_FREE 0
 #define ENV_RUNNABLE 1
 #define ENV_NOT_RUNNABLE 2
+#define ENV_DYING 3
 
 // Control block of an environment (process).
 struct Env {
@@ -46,11 +48,18 @@ struct Env {
 
 	// Lab 6 scheduler counts
 	u_int env_runs; // number of times we've been env_run'ed
+
+	struct File *cwd;
+	char r_path[MAXPATHLEN];
+	void *variable_set;
+	LIST_ENTRY(Env) env_dying_link;
+	int exit_status;
 };
 
 LIST_HEAD(Env_list, Env);
 TAILQ_HEAD(Env_sched_list, Env);
 extern struct Env *curenv;		     // the current env
+extern struct Env_list env_free_list;
 extern struct Env_sched_list env_sched_list; // runnable env list
 
 void env_init(void);

@@ -47,20 +47,20 @@ int _pwd(int, char **);
 int _history(int, char **);
 int _exit(int, char **);
 
-struct BuiltinCmd {
-    const char *name;
-    int (*func)(int, char **);
-};
+// struct BuiltinCmd {
+//     const char *name;
+//     int (*func)(int, char **);
+// };
 
-static struct BuiltinCmd builtin_cmds[] = {
-    {"cd", _cd},
-    {"pwd", _pwd},
-    {"history", _history},
-    {"declare", _declare},
-    {"unset", _unset},
-    {"exit", _exit},
-    {0, 0}  // Sentinel
-};
+// static struct BuiltinCmd builtin_cmds[] = {
+//     {"cd", _cd},
+//     {"pwd", _pwd},
+//     {"history", _history},
+//     {"declare", _declare},
+//     {"unset", _unset},
+//     {"exit", _exit},
+//     {0, 0}  // Sentinel
+// };
 
 #define PRINTF(...)                 \
     do {                            \
@@ -452,22 +452,43 @@ void runcmd(char *s) {
 	}
 	argv[argc] = 0;
 	int r;
-	// for (int i = 0; builtin_cmds[i].name; i++) {
-    //     if (strcmp(argv[0], builtin_cmds[i].name) == 0) {
-    //         r = builtin_cmds[i].func(argc, argv);
-    //         goto out;
-	// 	}
-    // }
 	if (strcmp("cd", argv[0]) == 0) {
-		_cd(argc, argv);
+		switch (argc) {
+			case 1:
+				argv[1] = "/";
+			case 2:
+				if ((r = chdir(argv[1])) < 0) {
+					if (r == -E_NOT_FOUND) {
+						fprintf(2, "cd: The directory '%s' does not exist\n",
+								argv[1]);
+					} else if (r == -E_NOT_DIR) {
+						fprintf(2, "cd: '%s' is not a directory\n", argv[1]);
+					} else {
+						fprintf(2, "cd failed %s: %d\n", argv[1], r);
+					}
+				}
+				strcpy(rPath, (const char *)env->r_path);
+				break;
+
+			default:
+				fprintf(2, "Too many args for cd command\n");
+		}
 		goto out;
 	}
 	if (strcmp("pwd", argv[0]) == 0) {
-		_pwd(argc, argv);
+		if (argc > 1) {
+			fprintf(2, "pwd: expected 0 arguments; got %d\n", argc - 1);
+			goto out;
+		}
+		printf("%s\n", rPath);
 		goto out;
 	}
 	if (strcmp("history", argv[0]) == 0) {
-		_history(argc, argv);
+		if (argc > 1) {
+			fprintf(2, "history: expected 0 arguments; got %d\n", argc - 1);
+			goto out;
+		}
+		show_history(&history);
 		goto out;
 	}
 	if (strcmp("declare", argv[0]) == 0) {
@@ -475,11 +496,20 @@ void runcmd(char *s) {
 		goto out;
 	}
 	if (strcmp("unset", argv[0]) == 0) {
-		_unset(argc, argv);
+		if(argc != 2) {
+			fprintf(2, "unset: expected 1 argument; got %d\n", argc - 1);
+			goto out;
+		}
+		unset_var(&variable_set, argv[1]);
 		goto out;
 	}
 	if (strcmp("exit", argv[0]) == 0) {
-		_exit(argc, argv);
+		if (argc > 1) {
+			fprintf(2, "exit: expected 0 arguments; got %d\n", argc - 1);
+			goto out;
+		}
+		save_command_history(&history);
+		exit(0);
 		goto out;
 	}
 	// 创建一个进程执行命令
@@ -500,7 +530,6 @@ out:
 		r |= wait(rightpipe);
 	}
 	// 退出
-	// exit();
 	if (isChild) {
 		exit(r);
 	}
@@ -793,11 +822,6 @@ int main(int argc, char **argv) {
 
 	if (interactive) {
 		printf("%s\n", _MOS_LOGO_);
-		printf("\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
-		printf("::                                                         ::\n");
-		printf("::                     MOS Shell 2025                      ::\n");
-		printf("::                                                         ::\n");
-		printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	}
 
 	store_01(storedFd);
@@ -855,7 +879,6 @@ int _declare(int argc, char **argv) {
     name = argv[0];
     value = (char *)strchr(argv[0], '=');
     if (!value || name == value || !*(value + 1)) {
-        // If no '=' found or name is empty or value is empty
         fprintf(2, "declare: syntax error: expected name=value\n");
         return -E_INVAL;
     }
@@ -928,8 +951,6 @@ int _exit(int argc, char **argv) {
         fprintf(2, "exit: expected 0 arguments; got %d\n", argc - 1);
         return -E_INVAL;
     }
-
-    // save history before exiting
     save_command_history(&history);
     exit(0);
 }

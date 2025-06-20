@@ -466,12 +466,14 @@ void runcmd(char *s) {
 					} else {
 						fprintf(2, "cd failed %s: %d\n", argv[1], r);
 					}
+					goto out;
 				}
 				strcpy(rPath, (const char *)env->r_path);
 				break;
 
 			default:
 				fprintf(2, "Too many args for cd command\n");
+				goto out;
 		}
 		goto out;
 	}

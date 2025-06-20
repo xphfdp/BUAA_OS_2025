@@ -196,3 +196,51 @@ char *strreplace(char *str, char old, char new)
 			*tmp = new;
 	return str;
 }
+
+void* memmove(void* dest, void* src, size_t num) 
+{
+    //dest落在了src的左边，从前往后拷贝
+    //dest落在了src的右边，同时没有超过那个重叠的边界的时候，从后往前拷贝
+    void* rest = dest;
+    // void* 不能直接解引用，那么如何复制呢？
+    // 给了num个字节，也就是需要复制num个字节
+    // 那就转换成char*，一个一个字节的复制过去
+    if (dest < src) 
+    //if (dest < src || dest > (char*)src + num) 
+    {
+    	//dest落在了src的左边，从前往后拷
+    	while (num--)
+    	{
+    	    *(char*)dest = *(char*)src;
+    	    //++(char*)dest;
+    	    //++(char*)src;
+    	    (char*)dest++;
+    	    (char*)src++;
+    	}
+    }
+    else 
+    {
+    	// 从后往前拷
+    	// 找到最后一个字节
+    	while (num--) 
+    	{
+    	    *((char*)dest + num) = *((char*)src + num);
+    	}
+
+    }
+    return rest;
+}
+
+
+int isalpha(int c) {
+    // 判断字符是否在大写字母范围内 ('A' 到 'Z')
+    if (c >= 'A' && c <= 'Z') {
+        return 1;
+    }
+    // 判断字符是否在小写字母范围内 ('a' 到 'z')
+    if (c >= 'a' && c <= 'z') {
+        return 1;
+    }
+    // 如果都不满足，则返回 false
+    return 0;
+}

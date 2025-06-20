@@ -17,5 +17,7 @@ char *strncat(char *dest, const char *src, size_t n);
 int strncmp(const char *str1, const char *str2, size_t n);
 char *strpbrk(const char *str1, const char *str2);
 char *strreplace(char *str, char oldletter, char newletter);
+void* memmove(void* dest, void* src, size_t num);
+int isalpha(int c);
 
 #endif

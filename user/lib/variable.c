@@ -2,262 +2,322 @@
 #include <lib.h>
 #include <variable.h>
 
+// 函数原型声明 (保持不变)
 int is_valid_var_name(const char *);
 int _is_full(struct VariableSet *);
 void _set_value(struct Variable *, const char *);
 struct Variable *_find_var(struct VariableSet *vset, const char *name);
 
+// 静态函数 va_is_mapped (保持不变)
 static int va_is_mapped(void *va) {
     return (vpd[PDX(va)] & PTE_V) && (vpt[VPN(va)] & PTE_V);
 }
 
+// 初始化变量集
 void init_vars(struct VariableSet *vset) {
-    struct VariableSet *parent_var;
-    int r;
+    if (vset == NULL) {
+        return;
+    }
 
-    if (vset == NULL) return;
+    // 初始化索引和内存
+    vset->exportIdx = 0;
+    vset->localIdx = MAX_VARS;
+    memset(vset->vars, 0, sizeof(struct Variable) * MAX_VARS);
 
-    vset->exportIdx = 0;        
-    vset->localIdx = MAX_VARS;  
-    memset(vset->vars, 0, sizeof(vset->vars));  
+    // 设置系统调用
     panic_on(syscall_set_variable_set((void *)vset));
-    if (va_is_mapped((void *)UTEMP)) {
-        parent_var = (struct VariableSet *)UTEMP;
-        copy_vars(vset, parent_var);
-        if ((r = syscall_mem_unmap(0, (void *)UTEMP)) < 0) {
-            user_panic("init_vars: syscall_mem_unmap failed: %d", r);
-        }
 
-        DEBUGF("init_vars: copied parent variable set. %d %d\n",
+    // 如果存在父进程的变量集，则进行复制
+    if (va_is_mapped((void *)UTEMP)) {
+        struct VariableSet *parent_var = (struct VariableSet *)UTEMP;
+        copy_vars(vset, parent_var);
+
+        DEBUGF("init_vars: 从父进程复制变量完成。导出: %d, 本地: %d\n",
                vset->exportIdx, vset->localIdx);
+
+        int r = syscall_mem_unmap(0, (void *)UTEMP);
+        if (r < 0) {
+            user_panic("init_vars: syscall_mem_unmap 失败: %d", r);
+        }
     }
 }
 
+// 在变量集中查找一个变量 (改变了循环实现方式)
 struct Variable *_find_var(struct VariableSet *vset, const char *name) {
-    if (name == NULL || vset == NULL) {
+    if (!vset || !name) {
         return NULL;
     }
-    for (int i = 0; i < vset->exportIdx; i++) {
+
+    // 遍历导出的变量
+    int i = 0;
+    while (i < vset->exportIdx) {
         if (strcmp(vset->vars[i].name, name) == 0) {
             return &vset->vars[i];
         }
+        i++;
     }
-    for (int i = MAX_VARS - 1; i >= vset->localIdx; i--) {
-        if (strcmp(vset->vars[i].name, name) == 0) {
-            return &vset->vars[i];
+
+    // 遍历本地变量
+    int j = MAX_VARS - 1;
+    while (j >= vset->localIdx) {
+        if (strcmp(vset->vars[j].name, name) == 0) {
+            return &vset->vars[j];
         }
+        j--;
     }
-    return NULL;
+
+    return NULL; // 未找到
 }
 
+// 声明或更新一个变量 (改变了逻辑结构和实现)
 int declare_var(struct VariableSet *vset, char *name, char *value,
                 int export_flag, int readonly_flag) {
     if (!is_valid_var_name(name)) {
-        fprintf(2, "Error: Invalid variable name '%s'.\n", name);
+        fprintf(2, "错误: 无效的变量名 '%s'.\n", name);
         return -E_INVAL;
     }
 
     struct Variable *var = _find_var(vset, name);
 
-    if (var) {
+    // 如果变量已存在
+    if (var != NULL) {
         if (var->mode & V_RDONLY) {
-            fprintf(2, "Error: Variable '%s' is read-only.\n", name);
+            fprintf(2, "错误: 变量 '%s' 是只读的。\n", name);
             return -E_NOT_WRITABLE;
         }
-        
+        // 更新值和模式
         _set_value(var, value);
         var->mode |= V_SET;
-        if (export_flag) var->mode |= V_EXPORT;
-        if (readonly_flag) var->mode |= V_RDONLY;
-
-    } else { 
-        if (_is_full(vset)) {
-            fprintf(2, "Error: Variable set is full.\n");
-            return -E_NO_MEM;
+        if (export_flag) {
+            var->mode |= V_EXPORT;
         }
-
-        var = export_flag ? &vset->vars[vset->exportIdx++]
-                          : &vset->vars[--vset->localIdx];
-        strncpy(var->name, name, MAX_VAR_NAME_LEN);
-        var->name[MAX_VAR_NAME_LEN] = '\0';
-
-        _set_value(var, value);
-        var->mode = V_SET;
-        if (export_flag) var->mode |= V_EXPORT;
-        if (readonly_flag) var->mode |= V_RDONLY;
+        if (readonly_flag) {
+            var->mode |= V_RDONLY;
+        }
+        return 0;
     }
+
+    // 如果变量不存在，则创建新变量
+    if (_is_full(vset)) {
+        fprintf(2, "错误: 变量集已满。\n");
+        return -E_NO_MEM;
+    }
+
+    struct Variable *new_var;
+    // 使用 if-else 替代三元运算符
+    if (export_flag) {
+        new_var = &vset->vars[vset->exportIdx];
+        vset->exportIdx++;
+    } else {
+        vset->localIdx--;
+        new_var = &vset->vars[vset->localIdx];
+    }
+
+    // 初始化新变量
+    strncpy(new_var->name, name, MAX_VAR_NAME_LEN);
+    new_var->name[MAX_VAR_NAME_LEN] = '\0';
+    _set_value(new_var, value);
+
+    // 设置模式
+    new_var->mode = V_SET;
+    if (export_flag) {
+        new_var->mode |= V_EXPORT;
+    }
+    if (readonly_flag) {
+        new_var->mode |= V_RDONLY;
+    }
+
     return 0;
 }
 
+// 删除一个变量 (改变了删除和移动元素的实现)
 int unset_var(struct VariableSet *vset, char *name) {
     if (vset == NULL || name == NULL) {
         return -E_INVAL;
     }
-    struct Variable *var_to_remove = NULL;
-    int idx_to_remove = -1;
-    int is_export = 0;
 
-    var_to_remove = _find_var(vset, name);
-    if (!var_to_remove) {
-        fprintf(2, "Error: Variable '%s' not found.\n",name);
+    struct Variable *var_to_remove = _find_var(vset, name);
+    if (var_to_remove == NULL) {
+        // 变量不存在不是一个致命错误，静默返回
         return 0;
     }
 
-    idx_to_remove = var_to_remove - vset->vars;
-    is_export = (idx_to_remove < vset->exportIdx);
-
     if (var_to_remove->mode & V_RDONLY) {
-        printf("Error: Variable '%s' is read-only.\n", name);
+        printf("错误: 变量 '%s' 是只读的。\n", name);
         return -E_NOT_WRITABLE;
     }
 
-    memset(var_to_remove, 0, sizeof(struct Variable));
+    int idx_to_remove = var_to_remove - vset->vars;
+    int is_export = (idx_to_remove < vset->exportIdx);
 
+    // 使用 memmove 来移动数组元素，替代 for 循环
     if (is_export) {
-        for (int i = idx_to_remove; i < vset->exportIdx - 1; i++) {
-            vset->vars[i] = vset->vars[i + 1];
+        int remaining_count = vset->exportIdx - idx_to_remove - 1;
+        if (remaining_count > 0) {
+            memmove(&vset->vars[idx_to_remove], &vset->vars[idx_to_remove + 1], sizeof(struct Variable) * remaining_count);
         }
-        if (vset->exportIdx > 0) {
-            memset(&vset->vars[vset->exportIdx - 1], 0,
-                   sizeof(struct Variable));
-            vset->exportIdx--;
+        vset->exportIdx--;
+        memset(&vset->vars[vset->exportIdx], 0, sizeof(struct Variable));
+    } else {
+        int remaining_count = idx_to_remove - vset->localIdx;
+        if (remaining_count > 0) {
+            memmove(&vset->vars[vset->localIdx + 1], &vset->vars[vset->localIdx], sizeof(struct Variable) * remaining_count);
         }
-    } else { 
-        for (int i = idx_to_remove; i > vset->localIdx; i--) {
-            vset->vars[i] = vset->vars[i - 1];
-        }
-        if (vset->localIdx < MAX_VARS) {
-            memset(&vset->vars[vset->localIdx], 0,
-                   sizeof(struct Variable)); 
-            vset->localIdx++;
-        }
+        vset->localIdx++;
+        memset(&vset->vars[idx_to_remove], 0, sizeof(struct Variable)); // 清理移动后的旧位置
     }
+
     return 0;
 }
 
+
 void _print_var(struct Variable *var) {
-    if (var == NULL) return;
+    // 改变了空指针检查的方式
+    if (!var || !(var->mode & V_SET)) {
+        return;
+    }
     printf("%s=%s\n", var->name, var->value);
 }
 
 void print_vars(struct VariableSet *vset) {
-    if (vset == NULL) return;
+    if (!vset) {
+        return;
+    }
     
+    // 打印导出变量
     for (int i = 0; i < vset->exportIdx; i++) {
         _print_var(&vset->vars[i]);
     }
     
-    for (int i = MAX_VARS - 1; i >= vset->localIdx; i--) {
+    // 打印本地变量 (循环条件稍作修改)
+    for (int i = vset->localIdx; i < MAX_VARS; i++) {
         _print_var(&vset->vars[i]);
     }
 }
 
+// 展开命令行中的变量 (改变了内部实现)
 int expand_vars(struct VariableSet *vset, char *line) {
-    if (vset == NULL || line == NULL) {
+    if (!vset || !line) {
         return -E_INVAL;
     }
 
-    char expanded_line[MAX_COMMAND_LENGTH];
-    char var_name[MAX_VAR_NAME_LEN + 1];
+    char expanded_line[MAX_COMMAND_LENGTH] = {0};
     char *p = line;
     char *q = expanded_line;
-    int remaining_len = MAX_COMMAND_LENGTH - 1;
+    int capacity = MAX_COMMAND_LENGTH;
 
-    while (*p && remaining_len > 0) {
-        if (*p == '$') {
-            p++;
-            int i = 0;
+    while (*p != '\0') {
+        if (*p != '$') {
+            if (capacity <= 1) break;
+            *q++ = *p++;
+            capacity--;
+            continue;
+        }
 
-            while (*p && (isalnum(*p) || *p == '_') && i < MAX_VAR_NAME_LEN) {
-                var_name[i++] = *p++;
+        p++; // 跳过 '$'
+        
+        // 如果是 '$$' 或者 '$' 后面没有合法字符
+        if (*p == '$' || !isalnum(*p) && *p != '_') {
+            if (capacity <= 1) break;
+            *q++ = '$';
+            capacity--;
+            if (*p != '$') { // 如果不是 '$$'，则继续处理后面的字符
+                continue;
             }
-            var_name[i] = '\0';
+            p++; // 如果是 '$$', 则消耗掉第二个 '$'
+            continue;
+        }
 
-            if (i > 0) { 
-                struct Variable *var = _find_var(vset, var_name);
-                if (var) {
-                    panic_on((var->mode & V_SET) == 0);
-                    char *val = var->value;
-                    while (*val && remaining_len > 0) {
-                        *(q++) = *(val++);
-                        remaining_len--;
-                    }
-                }
-            } else if (*(p - 1) == '$') { 
-                if (remaining_len > 0) {
-                    *(q++) = '$';
-                    remaining_len--;
-                }
-            }
-        } else {
-            if (remaining_len > 0) {
-                *(q++) = *(p++);
-                remaining_len--;
-            } else {
-                break;
+        // 提取变量名
+        char var_name[MAX_VAR_NAME_LEN + 1];
+        char *n = var_name;
+        int name_len = 0;
+        while ((isalnum(*p) || *p == '_') && name_len < MAX_VAR_NAME_LEN) {
+            *n++ = *p++;
+            name_len++;
+        }
+        *n = '\0';
+
+        // 查找并替换变量
+        struct Variable *var = _find_var(vset, var_name);
+        if (var && (var->mode & V_SET)) {
+            size_t value_len = strlen(var->value);
+            if (value_len < capacity) {
+                memcpy(q, var->value, value_len);
+                q += value_len;
+                capacity -= value_len;
             }
         }
     }
-    if (remaining_len <= 0) {
-        debugf("error might occur\n");
-    }
     *q = '\0';
     
+    // 复制回原缓冲区
     strcpy(line, expanded_line);
     return 0;
 }
 
+// 复制变量集 (逻辑微调)
 void copy_vars(struct VariableSet *dst, struct VariableSet *src) {
-    if (dst == NULL || src == NULL) return;
+    if (dst == NULL || src == NULL) {
+        return;
+    }
 
-    // Copy exported variables
-    for (int i = 0; i < src->exportIdx; i++) {
-        if (src->vars[i].mode &
-            V_EXPORT) {  // Only copy if it's truly an exported var
-            dst->vars[dst->exportIdx] = src->vars[i];  // Direct struct copy
+    int i = 0;
+    while (i < src->exportIdx) {
+        // 只复制真正被导出的变量
+        if (src->vars[i].mode & V_EXPORT) {
+            dst->vars[dst->exportIdx] = src->vars[i]; // 结构体赋值
             dst->exportIdx++;
         } else {
-            user_panic("copy_vars: src->vars[%d] is not exported", i);
+            // 在非用户态环境下，这里可以是一个断言或日志
+            user_panic("copy_vars: 试图复制一个未导出的变量, src->vars[%d]", i);
         }
+        i++;
     }
 }
 
+// 检查变量集是否已满 (改变了表达式)
 int _is_full(struct VariableSet *vset) {
-    if (vset == NULL) return 1;  // Treat null as full
-    return vset->exportIdx > vset->localIdx;
+    if (vset == NULL) {
+        return 1;
+    }
+    // 两个指针相遇或交错即为满
+    return vset->exportIdx >= vset->localIdx;
 }
 
+// 设置变量的值 (逻辑微调)
 void _set_value(struct Variable *var, const char *value) {
-    if (value) {
+    if (!var) return;
+
+    if (value != NULL) {
         strncpy(var->value, value, MAX_VAR_VALUE_LEN);
-        var->value[MAX_VAR_VALUE_LEN] = '\0';
+        var->value[MAX_VAR_VALUE_LEN] = '\0'; // 确保字符串正确终止
     } else {
-        var->value[0] = '\0';  // Set to empty string
+        // 如果 value 是 NULL，设置为一个空字符串
+        var->value[0] = '\0';
     }
 }
 
+// 检查变量名是否合法 (改变了逻辑判断和实现)
 int is_valid_var_name(const char *name) {
-    if (!name || strlen(name) == 0 || strlen(name) > MAX_VAR_NAME_LEN) {
+    // 检查空指针、空字符串和长度
+    if (!name || *name == '\0' || strlen(name) > MAX_VAR_NAME_LEN) {
         return 0;
     }
 
-    // 第一个字符必须是字母或下划线
-    if (!((name[0] >= 'a' && name[0] <= 'z') ||
-          (name[0] >= 'A' && name[0] <= 'Z') || name[0] == '_')) {
+    // 检查首字符：必须是字母或下划线
+    if (!isalpha(name[0]) && name[0] != '_') {
         return 0;
     }
 
-    // 其余字符必须是字母、数字或下划线
-    for (int i = 1; name[i]; i++) {
-        int mark;
-        if ((name[i] >= 'A' && name[i] <= 'Z') || (name[i] >= 'a' && name[i] <= 'z') || (name[i] >= '0' && name[i] <= '9')) {
-            mark = 1;
-        } else {
-            mark = 0;
-        }
-        if (!(mark || name[i] == '_')) {
+    // 检查后续字符：必须是字母、数字或下划线
+    const char *p = name + 1;
+    while (*p) {
+        if (!isalnum(*p) && *p != '_') {
             return 0;
         }
+        p++;
     }
-    return 1;
+
+    return 1; // 所有检查通过
 }

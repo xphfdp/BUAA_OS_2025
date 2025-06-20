@@ -47,20 +47,20 @@ int _pwd(int, char **);
 int _history(int, char **);
 int _exit(int, char **);
 
-struct BuiltinCmd {
-    const char *name;
-    int (*func)(int, char **);
-};
+// struct BuiltinCmd {
+//     const char *name;
+//     int (*func)(int, char **);
+// };
 
-static struct BuiltinCmd builtin_cmds[] = {
-    {"cd", _cd},
-    {"pwd", _pwd},
-    {"history", _history},
-    {"declare", _declare},
-    {"unset", _unset},
-    {"exit", _exit},
-    {0, 0}  // Sentinel
-};
+// static struct BuiltinCmd builtin_cmds[] = {
+//     {"cd", _cd},
+//     {"pwd", _pwd},
+//     {"history", _history},
+//     {"declare", _declare},
+//     {"unset", _unset},
+//     {"exit", _exit},
+//     {0, 0}  // Sentinel
+// };
 
 #define PRINTF(...)                 \
     do {                            \

@@ -47,21 +47,6 @@ int _pwd(int, char **);
 int _history(int, char **);
 int _exit(int, char **);
 
-// struct BuiltinCmd {
-//     const char *name;
-//     int (*func)(int, char **);
-// };
-
-// static struct BuiltinCmd builtin_cmds[] = {
-//     {"cd", _cd},
-//     {"pwd", _pwd},
-//     {"history", _history},
-//     {"declare", _declare},
-//     {"unset", _unset},
-//     {"exit", _exit},
-//     {0, 0}  // Sentinel
-// };
-
 #define PRINTF(...)                 \
     do {                            \
         if (interactive) {          \
@@ -453,45 +438,46 @@ void runcmd(char *s) {
 	argv[argc] = 0;
 	int r;
 	if (strcmp("cd", argv[0]) == 0) {
-		// switch (argc) {
-		// 	case 1:
-		// 		argv[1] = "/";
-		// 	case 2:
-		// 		if ((r = chdir(argv[1])) < 0) {
-		// 			if (r == -E_NOT_FOUND) {
-		// 				fprintf(2, "cd: The directory '%s' does not exist\n",
-		// 						argv[1]);
-		// 			} else if (r == -E_NOT_DIR) {
-		// 				fprintf(2, "cd: '%s' is not a directory\n", argv[1]);
-		// 			} else {
-		// 				fprintf(2, "cd failed %s: %d\n", argv[1], r);
-		// 			}
-		// 			goto out;
-		// 		}
-		// 		strcpy(rPath, (const char *)env->r_path);
-		// 		break;
-
-		// 	default:
-		// 		fprintf(2, "Too many args for cd command\n");
-		// 		goto out;
-		// }
-		_cd(argc, argv);
+		switch (argc) {
+		case 1:
+			argv[1] = "/";
+		case 2:
+			if ((r = chdir(argv[1])) < 0) {
+				if (r == -E_NOT_FOUND) {
+					fprintf(2, "cd: The directory '%s' does not exist\n", argv[1]);
+				} else if (r == -E_NOT_DIR) {
+					fprintf(2, "cd: '%s' is not a directory\n", argv[1]);
+				} else {
+					fprintf(2, "cd failed %s: %d\n", argv[1], r);
+				}
+				// r 将被保留
+			}
+			strcpy(rPath, (const char *)env->r_path);
+			break;
+		default:
+			fprintf(2, "Too many args for cd command\n");
+			r = -E_INVAL;
+		}
 		goto out;
 	}
 	if (strcmp("pwd", argv[0]) == 0) {
 		if (argc > 1) {
 			fprintf(2, "pwd: expected 0 arguments; got %d\n", argc - 1);
-			goto out;
+			r = -E_INVAL;
+		} else {
+			printf("%s\n", rPath);
+			r = 0;
 		}
-		printf("%s\n", rPath);
 		goto out;
 	}
 	if (strcmp("history", argv[0]) == 0) {
 		if (argc > 1) {
 			fprintf(2, "history: expected 0 arguments; got %d\n", argc - 1);
-			goto out;
+			r = -E_INVAL;
+		} else {
+			show_history(&history);
+			r = 0;
 		}
-		show_history(&history);
 		goto out;
 	}
 	if (strcmp("declare", argv[0]) == 0) {
@@ -499,20 +485,22 @@ void runcmd(char *s) {
 		goto out;
 	}
 	if (strcmp("unset", argv[0]) == 0) {
-		if(argc != 2) {
+		if (argc != 2) {
 			fprintf(2, "unset: expected 1 argument; got %d\n", argc - 1);
-			goto out;
+			r = -E_INVAL;
+		} else {
+			r = unset_var(&variable_set, argv[1]);
 		}
-		unset_var(&variable_set, argv[1]);
 		goto out;
 	}
 	if (strcmp("exit", argv[0]) == 0) {
 		if (argc > 1) {
 			fprintf(2, "exit: expected 0 arguments; got %d\n", argc - 1);
-			goto out;
+			r = -E_INVAL;
+		} else {
+			save_command_history(&history);
+			exit(0); // 直接退出
 		}
-		save_command_history(&history);
-		exit(0);
 		goto out;
 	}
 	// 创建一个进程执行命令

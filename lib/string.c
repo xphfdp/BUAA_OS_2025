@@ -139,3 +139,60 @@ int isalnum(int c) {
 	}
 	return 0;
 }
+
+char *strncat(char *dest, const char *src, size_t n)
+{
+	char *tmp = dest;
+
+	if (n) {
+        /* 找到目标字符串结尾 */
+		while (*dest)
+			dest++;
+        /* 从src字符串中追加n个字符到dest中 */
+		while ((*dest++ = *src++) != 0) {
+            /* n减小到等于0时，提前结束循环 */
+			if (--n == 0) {
+				*dest = '\0';
+				break;
+			}
+		}
+	}
+	return tmp;
+}
+
+int strncmp(const char *str1, const char *str2, size_t n)
+{
+    while (n) {
+        if (*str1 != *str2)
+            return (*str1 - *str2);
+        if (!*str1)
+            break;
+        str1++;
+        str2++;
+        n--;
+    }
+
+    return 0;
+}
+
+char *strpbrk(const char *str1, const char *str2)
+{
+	const char *sc1, *sc2;
+
+	for (sc1 = str1; *sc1 != '\0'; sc1++) {
+		for (sc2 = str2; *sc2 != '\0'; sc2++) {
+			if (*sc1 == *sc2)
+				return (char *)sc1;
+		}
+	}
+	return NULL;
+}
+
+char *strreplace(char *str, char old, char new)
+{
+    char *tmp = str;
+	for (; *tmp; tmp++)
+		if (*tmp == old)
+			*tmp = new;
+	return str;
+}

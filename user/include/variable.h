@@ -5,8 +5,7 @@
 
 #define MAX_VAR_NAME_LEN 16
 #define MAX_VAR_VALUE_LEN 16
-#define MAX_VARS \
-    ((PAGE_SIZE - 2 * sizeof(int)) / sizeof(struct Variable))  // 102
+#define MAX_VARS (PAGE_SIZE / sizeof(struct Variable))
 
 #define V_SET 0x01
 #define V_EXPORT 0x02
@@ -18,18 +17,10 @@ struct Variable {
     int mode;
 };
 
-/*
- * |-------------------------------------------------------------------------------------------------|
- * | Global Env Var 0 | ... | Global Env Var N | ....... | Non-Global Var M | ... | Non-Global Var 0 |
- * |-------------------------------------------------------------------------------------------------|
- * 0                                           ^        ^                                      MAX_VARS-1
- *                                             |        |
- *                                       exportIdx    localIdx
-*/
 struct VariableSet {
     struct Variable vars[MAX_VARS];
-    int exportIdx;  // next index for global env var
-    int localIdx;   // next index for non-global var
+    int exportIdx;
+    int localIdx;
 };
 
 void init_vars(struct VariableSet *vset);

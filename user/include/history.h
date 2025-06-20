@@ -18,11 +18,11 @@
 
     
 struct History {
-	int fd; // file descriptor for history file
-	int write_index; // next write index in history.buffer
-	int cursor; // moving cursor in history.buffer
-	char buffer[MAX_HISTORY_COMMANDS][MAX_COMMAND_LENGTH]; // command history buffer
-	char stage_command[MAX_COMMAND_LENGTH]; // current command being edited
+	int fd;
+	int write_index;
+	int cursor;
+	char buffer[MAX_HISTORY_COMMANDS][MAX_COMMAND_LENGTH];
+	char stage_command[MAX_COMMAND_LENGTH];
 };
 
 // using buffer, read a line from fd into buf

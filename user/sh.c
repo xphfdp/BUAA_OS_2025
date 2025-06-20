@@ -9,6 +9,28 @@
 #define PROMPT "mos> "
 #define ESC 0x1b
 #define BACKSPACE 0x08
+#define _MOS_LOGO_ "      ___           ___           ___     \n\
+     /\\__\\         /\\  \\         /\\  \\    \n\
+    /::|  |       /::\\  \\       /::\\  \\   \n\
+   /:|:|  |      /:/\\:\\  \\     /:/\\ \\  \\  \n\
+  /:/|:|__|__   /:/  \\:\\  \\   _\\:\\~\\ \\  \\ \n\
+ /:/ |::::\\__\\ /:/__/ \\:\\__\\ /\\ \\:\\ \\ \\__\\\n\
+ \\/__/~~/:/  / \\:\\  \\ /:/  / \\:\\ \\:\\ \\/__/\n\
+       /:/  /   \\:\\  /:/  /   \\:\\ \\:\\__\\  \n\
+      /:/  /     \\:\\/:/  /     \\:\\/:/  /  \n\
+     /:/  /       \\::/  /       \\::/  /   \n\
+     \\/__/         \\/__/         \\/__/    \n\
+      ___           ___           ___           ___       ___ \n\
+     /\\  \\         /\\__\\         /\\  \\         /\\__\\     /\\__\\\n\
+    /::\\  \\       /:/  /        /::\\  \\       /:/  /    /:/  /\n\
+   /:/\\ \\  \\     /:/__/        /:/\\:\\  \\     /:/  /    /:/  / \n\
+  _\\:\\~\\ \\  \\   /::\\  \\ ___   /::\\~\\:\\  \\   /:/  /    /:/  /  \n\
+ /\\ \\:\\ \\ \\__\\ /:/\\:\\  /\\__\\ /:/\\:\\ \\:\\__\\ /:/__/    /:/__/   \n\
+ \\:\\ \\:\\ \\/__/ \\/__\\:\\/:/  / \\:\\~\\:\\ \\/__/ \\:\\  \\    \\:\\  \\   \n\
+  \\:\\ \\:\\__\\        \\::/  /   \\:\\ \\:\\__\\    \\:\\  \\    \\:\\  \\  \n\
+   \\:\\/:/  /        /:/  /     \\:\\ \\/__/     \\:\\  \\    \\:\\  \\ \n\
+    \\::/  /        /:/  /       \\:\\__\\        \\:\\__\\    \\:\\__\\\n\
+     \\/__/         \\/__/         \\/__/         \\/__/     \\/__/"
 
 static struct History history;
 static struct VariableSet variable_set;
@@ -610,15 +632,11 @@ void readline(char *buf, u_int n) {
 
 							if(i > temp_i) {
 								if (interactive) {
-									// move cursor
 									printf("\033[%dD", i - temp_i);
-									// clear till end of line
 									printf("\033[K");
-									// redraw the back buffer
 									for(int k = backbuf_i - 1; k >= 0; k--){
 										PUT_CHAR(backbuf[k]);
 									}
-									// remove the word from the buffer
 									if(backbuf_i > 0) {
 										printf("\033[%dD", backbuf_i);
 									}
@@ -749,6 +767,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (interactive) {
+		printf("%s\n", _MOS_LOGO_);
 		printf("\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 		printf("::                                                         ::\n");
 		printf("::                     MOS Shell 2025                      ::\n");
@@ -764,7 +783,7 @@ int main(int argc, char **argv) {
 	// 在循环中不断读入命令行并进行处理
 	for (;;) {
 		// 作为交互式终端，先打印一个"$"
-		PRINTF("\n%s", PROMPT);
+		PRINTF("\n%s%s", rPath, " $ ");
 		// 读入一份命令到buf
 		readline(buf, sizeof buf);
 		add_history(&history, buf);
@@ -821,18 +840,6 @@ int _declare(int argc, char **argv) {
 }
 
 int _unset(int argc, char **argv) {
-    // int r;
-    // if (argc == 1) {
-    //     fprintf(2, "unset: expected at least one argument\n");
-    //     return -E_INVAL;
-    // }
-
-    // for (int i = 1; i < argc; i++) {
-    //     if ((r = unset_var(&variable_set, argv[i])) < 0) {
-    //         fprintf(2, "unset: failed to unset variable '%s'\n", argv[i]);
-    //         return r;
-    //     }
-    // }
     if(argc != 2) {
         fprintf(2, "unset: expected 1 argument; got %d\n", argc - 1);
         return -E_INVAL;

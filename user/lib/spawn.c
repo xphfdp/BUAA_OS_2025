@@ -102,12 +102,6 @@ static int spawn_mapper(void *data, u_long va, size_t offset, u_int perm, const 
 	return 0;
 }
 
-/* Note:
- *   This function involves loading executable code to memory. After the completion of load
- *   procedures, D-cache and I-cache writeback/invalidation MUST be performed to maintain cache
- *   coherence, which MOS has NOT implemented. This may result in unexpected behaviours on real
- *   CPUs! QEMU doesn't simulate caching, allowing the OS to function correctly.
- */
 // 根据磁盘文件创建了一个进程
 int spawn(char *file_path, char **argv) {
 	// 打开磁盘路径对应的文件
@@ -115,18 +109,11 @@ int spawn(char *file_path, char **argv) {
 	int fd;
 	int isShell = 0;
 	struct Stat st;
+	char cmd[1024] = {0};
 	if ((fd = open(file_path, O_RDONLY)) < 0) {
-		int len = strlen(file_path);
-		if (len < 2 || (len < MAXPATHLEN - 2 && (file_path[len - 1] != 'b' || file_path[len - 2] != '.'))) {
-			char tmp_path[MAXPATHLEN];
-			strcpy(tmp_path, file_path);
-			tmp_path[len] = '.';
-			tmp_path[len+1] = 'b';
-			tmp_path[len+2] = '\0';
-			if ((fd = open(tmp_path, O_RDONLY)) < 0) {
-				return fd;
-			}
-		} else {
+		strcpy(cmd, file_path);
+		strcat(cmd, ".b\0");
+		if ((fd = open(cmd, O_RDONLY)) < 0) {
 			return fd;
 		}
 	}
@@ -135,11 +122,6 @@ int spawn(char *file_path, char **argv) {
 	if (strcmp(st.st_name, "sh.b") == 0) {
 		isShell = 1;
 	}
-
-	// Step 2: Read the ELF header (of type 'Elf32_Ehdr') from the file into 'elfbuf' using
-	// 'readn()'.
-	// If that fails (where 'readn' returns a different size than expected),
-	// set 'r' and 'goto err' to close the file and return the error.
 	int r;
 	u_char elfbuf[512];
 	// 读入文件内容到elfbuf中
@@ -155,8 +137,6 @@ int spawn(char *file_path, char **argv) {
 	// 读取程序入口信息
 	u_long entrypoint = ehdr->e_entry;
 
-	// Step 3: Create a child using 'syscall_exofork()' and store its envid in 'child'.
-	// If the syscall fails, set 'r' and 'goto err'.
 	// 使用系统调用创建了一个子进程
 	// 不使用fork是因为会替换子进程的代码和数据，不会再从此处继续执行
 	// 如果系统调用失败则返回错误
@@ -168,8 +148,6 @@ int spawn(char *file_path, char **argv) {
 		goto err;
 	}
 
-	// Step 4: Use 'init_stack(child, argv, &sp)' to initialize the stack of the child.
-	// 'goto err1' if that fails.
 	// 初始化子进程的栈空间
 	u_int sp;
 	if ((r = init_stack(child, argv, &sp)) < 0)
@@ -177,15 +155,9 @@ int spawn(char *file_path, char **argv) {
 		goto err1;
 	}
 
-	// Step 5: Load the ELF segments in the file into the child's memory.
-	// This is similar to 'load_icode()' in the kernel.
 	// 遍历整个ELF头的程序段，将程序段的内容读到内存中
 	size_t ph_off;
 	ELF_FOREACH_PHDR_OFF (ph_off, ehdr) {
-		// Read the program header in the file with offset 'ph_off' and length
-		// 'ehdr->e_phentsize' into 'elfbuf'.
-		// 'goto err1' on failure.
-		// You may want to use 'seek' and 'readn'.
 		// 设置文件描述符相应的偏移量并读取文件的内容
 		if ((r = seek(fd, ph_off)) < 0) {
 			goto err1;
@@ -198,18 +170,11 @@ int spawn(char *file_path, char **argv) {
 		// 如果是需要加载的程序段
 		if (ph->p_type == PT_LOAD) {
 			void *bin;
-			// Read and map the ELF data in the file at 'ph->p_offset' into our memory
-			// using 'read_map()'.
-			// 'goto err1' if that fails.
 			// 先根据程序段相对于文件的偏移得到其在内存中映射到的地址
 			r = read_map(fd, ph->p_offset, &bin);
 			if (r != 0) {
 				goto err1;
 			}
-
-			// Load the segment 'ph' into the child's memory using 'elf_load_seg()'.
-			// Use 'spawn_mapper' as the callback, and '&child' as its data.
-			// 'goto err1' if that fails.
 			// 调用elf_load_seg将程序段加载到适当的位置
 			r = elf_load_seg(ph, bin, spawn_mapper, &child);
 			if (r != 0) {

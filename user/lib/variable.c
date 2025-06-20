@@ -2,13 +2,13 @@
 #include <lib.h>
 #include <variable.h>
 
-// 函数原型声明 (保持不变)
+// 函数原型声明
 int is_valid_var_name(const char *);
 int _is_full(struct VariableSet *);
 void _set_value(struct Variable *, const char *);
 struct Variable *_find_var(struct VariableSet *vset, const char *name);
 
-// 静态函数 va_is_mapped (保持不变)
+// 静态函数 va_is_mapped
 static int va_is_mapped(void *va) {
     return (vpd[PDX(va)] & PTE_V) && (vpt[VPN(va)] & PTE_V);
 }

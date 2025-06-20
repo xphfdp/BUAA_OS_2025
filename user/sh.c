@@ -436,13 +436,13 @@ void runcmd(char *s) {
 		return;
 	}
 	argv[argc] = 0;
-	int r;
+	int r = 0;
 	if (strcmp("cd", argv[0]) == 0) {
 		switch (argc) {
 		case 1:
 			argv[1] = "/";
 		case 2:
-			if ((r = chdir(argv[1])) < 0) {
+			if ((r = chdir(argv[1])) < 0) { // 失败时r被赋予错误码
 				if (r == -E_NOT_FOUND) {
 					fprintf(2, "cd: The directory '%s' does not exist\n", argv[1]);
 				} else if (r == -E_NOT_DIR) {
@@ -450,13 +450,15 @@ void runcmd(char *s) {
 				} else {
 					fprintf(2, "cd failed %s: %d\n", argv[1], r);
 				}
-				// r 将被保留
+			} else {
+				// ★★★ 关键修复(2): 成功时，明确将r设为0 ★★★
+				r = 0; 
+				strcpy(rPath, (const char *)env->r_path);
 			}
-			strcpy(rPath, (const char *)env->r_path);
 			break;
 		default:
 			fprintf(2, "Too many args for cd command\n");
-			r = -E_INVAL;
+			r = -E_INVAL; // 失败时r被赋予错误码
 		}
 		goto out;
 	}
@@ -496,10 +498,10 @@ void runcmd(char *s) {
 	if (strcmp("exit", argv[0]) == 0) {
 		if (argc > 1) {
 			fprintf(2, "exit: expected 0 arguments; got %d\n", argc - 1);
-			r = -E_INVAL;
+			r = -E_INVAL; // 虽然马上要退出，但好习惯是赋值
 		} else {
 			save_command_history(&history);
-			exit(0); // 直接退出
+			exit(0); 
 		}
 		goto out;
 	}
@@ -517,7 +519,7 @@ void runcmd(char *s) {
 out:
 	// 如果有管道，则等待执行完毕
 	if (rightpipe) {
-		dup(storedFd[1], 1);
+		close(1);
 		r |= wait(rightpipe);
 	}
 	// 退出

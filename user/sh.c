@@ -453,28 +453,29 @@ void runcmd(char *s) {
 	argv[argc] = 0;
 	int r;
 	if (strcmp("cd", argv[0]) == 0) {
-		switch (argc) {
-			case 1:
-				argv[1] = "/";
-			case 2:
-				if ((r = chdir(argv[1])) < 0) {
-					if (r == -E_NOT_FOUND) {
-						fprintf(2, "cd: The directory '%s' does not exist\n",
-								argv[1]);
-					} else if (r == -E_NOT_DIR) {
-						fprintf(2, "cd: '%s' is not a directory\n", argv[1]);
-					} else {
-						fprintf(2, "cd failed %s: %d\n", argv[1], r);
-					}
-					goto out;
-				}
-				strcpy(rPath, (const char *)env->r_path);
-				break;
+		// switch (argc) {
+		// 	case 1:
+		// 		argv[1] = "/";
+		// 	case 2:
+		// 		if ((r = chdir(argv[1])) < 0) {
+		// 			if (r == -E_NOT_FOUND) {
+		// 				fprintf(2, "cd: The directory '%s' does not exist\n",
+		// 						argv[1]);
+		// 			} else if (r == -E_NOT_DIR) {
+		// 				fprintf(2, "cd: '%s' is not a directory\n", argv[1]);
+		// 			} else {
+		// 				fprintf(2, "cd failed %s: %d\n", argv[1], r);
+		// 			}
+		// 			goto out;
+		// 		}
+		// 		strcpy(rPath, (const char *)env->r_path);
+		// 		break;
 
-			default:
-				fprintf(2, "Too many args for cd command\n");
-				goto out;
-		}
+		// 	default:
+		// 		fprintf(2, "Too many args for cd command\n");
+		// 		goto out;
+		// }
+		_cd(argc, argv);
 		goto out;
 	}
 	if (strcmp("pwd", argv[0]) == 0) {

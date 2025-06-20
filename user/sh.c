@@ -517,7 +517,7 @@ void runcmd(char *s) {
 out:
 	// 如果有管道，则等待执行完毕
 	if (rightpipe) {
-		close(1);
+		dup(storedFd[1], 1);
 		r |= wait(rightpipe);
 	}
 	// 退出

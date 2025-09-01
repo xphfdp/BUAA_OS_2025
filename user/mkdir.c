@@ -1,6 +1,5 @@
 #include <lib.h>
 
-
 static void usage(void) {
 	printf("usage: mkdir [-p] <directory...>\n");
 	exit(1);
@@ -25,7 +24,6 @@ int main(int argc, char **argv) {
 
 	for(i = 0; i < argc; ++i) {
 		if((r = mkdir(argv[i], p_flag)) < 0) {
-			// debugf("mkdir %s: %d\n", argv[i], r);
 			if(r == -E_FILE_EXISTS && !p_flag) {
 				fprintf(2, "mkdir: cannot create directory '%s': File exists\n", argv[i]);
 				exit(1);

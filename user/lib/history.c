@@ -25,6 +25,7 @@ int fgetline(int fd, char *buf, u_int n) {
     // 使用 for 循环代替 while 循环，使结构更清晰。
     for (chars_read = 0; chars_read < n - 1; ++chars_read) {
         // 从文件描述符中读取一个字符
+        // printf("%d\n", fd);
         int read_status = read(fd, &current_char, 1);
 
         if (read_status <= 0) { // 如果读取失败或到达文件末尾

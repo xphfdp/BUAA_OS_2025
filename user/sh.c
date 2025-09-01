@@ -601,7 +601,6 @@ void readline(char *buf, u_int n) {
 						break;
 
 					case C('E'):
-						// move cursor to the endAdd commentMore actions
 						if(backbuf_i > 0) {
 							PRINTF("\033[%dC", backbuf_i);
 							for(int k = backbuf_i - 1; k >= 0; k--){
@@ -612,7 +611,6 @@ void readline(char *buf, u_int n) {
 						break;
 
 					case C('A'):
-						// move cursor to the start
 						if(i > 0) {
 							PRINTF("\033[%dD", i);
 							for(int k = i - 1; k >= 0; --k){
@@ -623,13 +621,11 @@ void readline(char *buf, u_int n) {
 						break;
 
 					case C('K'):
-						// clear line from cursor to end
 						PRINTF("\033[K");
 						backbuf_i = 0;
 						break;
 
 					case C('U'):
-						// clear line from start to cursor
 						if(i > 0) {
 							if (interactive) {
 								printf("\r\033[K%s", PROMPT);
@@ -645,7 +641,6 @@ void readline(char *buf, u_int n) {
 						break;
 
 					case C('W'):
-						// delete word
 						{
 							int temp_i = i;
 							while (temp_i > 0 && strchr(WHITESPACE, buf[temp_i - 1])) {
@@ -685,7 +680,7 @@ void readline(char *buf, u_int n) {
 							PUT_CHAR(c);
 
 							for (int k = backbuf_i - 1; k>= 0; k--) {
-								// if (backbuf[k] < 32 || backbuf[k] >= 127) {
+								// if (backbuf[k] < 32 || backbuf[k] >= 127) { 
 								// 	printf("?");
 								// } else {
 								// 	printf("%c", backbuf[k]);
@@ -793,11 +788,6 @@ int main(int argc, char **argv) {
 
 	if (interactive) {
 		printf("%s\n", _MOS_LOGO_);
-		printf("\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
-		printf("::                                                         ::\n");
-		printf("::                     MOS Shell 2025                      ::\n");
-		printf("::                                                         ::\n");
-		printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	}
 
 	store_01(storedFd);
@@ -892,7 +882,6 @@ int _cd(int argc, char **argv) {
                 return r;
             }
             strcpy(rPath, (const char *)env->r_path);
-
             break;
 
         default:
